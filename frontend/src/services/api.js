@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -14,6 +14,14 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
 
 export const authService = {
   register: (data) => api.post('/auth/register', data),
@@ -52,6 +60,10 @@ export const adminService = {
   updateActivity: (id, data) => api.put(`/admin/activities/${id}`, data),
   deleteActivity: (id) => api.delete(`/admin/activities/${id}`),
   getUserProgress: () => api.get('/admin/user-progress'),
+};
+
+export const behaviorService = {
+  getBehaviorSummary: () => api.get('/behavior/behavior-summary'),
 };
 
 export default api;

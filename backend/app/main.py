@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from app.database.connection import init_db
 from app.middleware.error_handler import validation_exception_handler, general_exception_handler
 from app.controllers import auth_controller, user_controller, activity_controller, dashboard_controller
-from app.controllers import analytics_controller, recommendation_controller, admin_controller, ai_controller
+from app.controllers import analytics_controller, recommendation_controller, admin_controller, ai_controller, behavior_controller
 
 app = FastAPI(
     title="AI-Assisted Career Transition Platform",
@@ -34,6 +34,7 @@ app.include_router(analytics_controller.router, prefix="/api/analytics", tags=["
 app.include_router(recommendation_controller.router, prefix="/api/recommendations", tags=["Recommendations"])
 app.include_router(admin_controller.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(ai_controller.router, prefix="/api/ai", tags=["AI (Placeholder)"])
+app.include_router(behavior_controller.router, prefix="/api/behavior", tags=["Behavior Metrics"])
 
 @app.on_event("startup")
 def startup_event():

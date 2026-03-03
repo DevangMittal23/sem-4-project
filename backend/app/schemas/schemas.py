@@ -31,6 +31,7 @@ class UserProfileResponse(BaseModel):
     weekly_available_time: Optional[float]
     career_goal: Optional[str]
     risk_tolerance: Optional[str]
+    is_profile_complete: bool
     
     class Config:
         from_attributes = True

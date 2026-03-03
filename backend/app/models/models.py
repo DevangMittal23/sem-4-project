@@ -53,6 +53,8 @@ class ActivitySubmission(Base):
     activity_id = Column(Integer, ForeignKey("activities.id"))
     submission_content = Column(Text)
     submission_url = Column(String)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
     completion_time = Column(Float)
     attempts_count = Column(Integer, default=1)
     completion_status = Column(String, default="completed")
