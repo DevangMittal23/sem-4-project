@@ -31,6 +31,12 @@ export const authService = {
 export const userService = {
   getProfile: () => api.get('/user/profile'),
   updateProfile: (data) => api.put('/user/profile', data),
+  addSkill: (data) => api.post('/user/skills', data),
+  deleteSkill: (id) => api.delete(`/user/skills/${id}`),
+  addLink: (data) => api.post('/user/links', data),
+  deleteLink: (id) => api.delete(`/user/links/${id}`),
+  addInterest: (data) => api.post('/user/interests', data),
+  deleteInterest: (id) => api.delete(`/user/interests/${id}`),
 };
 
 export const activityService = {
@@ -49,6 +55,7 @@ export const analyticsService = {
   getDomainEngagement: () => api.get('/analytics/domain-engagement'),
   getConsistencyScore: () => api.get('/analytics/consistency-score'),
   getEngagementScore: () => api.get('/analytics/engagement-score'),
+  getSkillGrowth: () => api.get('/analytics/skill-growth'),
 };
 
 export const recommendationService = {
@@ -60,6 +67,15 @@ export const adminService = {
   updateActivity: (id, data) => api.put(`/admin/activities/${id}`, data),
   deleteActivity: (id) => api.delete(`/admin/activities/${id}`),
   getUserProgress: () => api.get('/admin/user-progress'),
+};
+
+export const activityLifecycleService = {
+  startActivity: (activityId) => api.post(`/activities/start/${activityId}`),
+  pauseActivity: (activityId) => api.post(`/activities/pause/${activityId}`),
+  resumeActivity: (activityId) => api.post(`/activities/resume/${activityId}`),
+  completeActivity: (data) => api.post('/activities/complete', data),
+  getUserProgress: () => api.get('/activities/user-progress'),
+  getActivityStatus: (activityId) => api.get(`/activities/status/${activityId}`),
 };
 
 export const behaviorService = {

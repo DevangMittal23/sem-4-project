@@ -22,6 +22,56 @@ class UserProfileUpdate(BaseModel):
     weekly_available_time: Optional[float] = None
     career_goal: Optional[str] = None
     risk_tolerance: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    education: Optional[str] = None
+    preferred_learning_style: Optional[str] = None
+    target_role: Optional[str] = None
+
+class UserSkillCreate(BaseModel):
+    skill_name: str
+    skill_category: str
+    skill_level: str
+    confidence_score: int
+
+class UserSkillResponse(BaseModel):
+    id: int
+    skill_name: str
+    skill_category: str
+    skill_level: str
+    confidence_score: int
+    
+    class Config:
+        from_attributes = True
+
+class UserLinkCreate(BaseModel):
+    type: str
+    url: str
+
+class UserLinkResponse(BaseModel):
+    id: int
+    type: str
+    url: str
+    
+    class Config:
+        from_attributes = True
+
+class UserInterestCreate(BaseModel):
+    domain: str
+
+class UserInterestResponse(BaseModel):
+    id: int
+    domain: str
+    
+    class Config:
+        from_attributes = True
+
+class ProfileAnalytics(BaseModel):
+    skill_count: int
+    strongest_domain: Optional[str]
+    weakest_domain: Optional[str]
+    activity_completion_rate: float
+    consistency_score: float
 
 class UserProfileResponse(BaseModel):
     id: int
@@ -31,7 +81,16 @@ class UserProfileResponse(BaseModel):
     weekly_available_time: Optional[float]
     career_goal: Optional[str]
     risk_tolerance: Optional[str]
+    bio: Optional[str]
+    location: Optional[str]
+    education: Optional[str]
+    preferred_learning_style: Optional[str]
+    target_role: Optional[str]
     is_profile_complete: bool
+    skills: List[UserSkillResponse] = []
+    links: List[UserLinkResponse] = []
+    interests: List[UserInterestResponse] = []
+    analytics: Optional[ProfileAnalytics] = None
     
     class Config:
         from_attributes = True

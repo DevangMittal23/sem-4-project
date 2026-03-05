@@ -15,6 +15,10 @@ class User(Base):
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     submissions = relationship("ActivitySubmission", back_populates="user")
     progress_logs = relationship("ProgressLog", back_populates="user")
+    activity_logs = relationship("UserActivityLog", back_populates="user")
+    skills = relationship("UserSkill", back_populates="user")
+    links = relationship("UserLink", back_populates="user")
+    interests = relationship("UserInterest", back_populates="user")
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
@@ -27,9 +31,45 @@ class UserProfile(Base):
     weekly_available_time = Column(Float)
     career_goal = Column(String)
     risk_tolerance = Column(String)
+    bio = Column(Text)
+    location = Column(String)
+    education = Column(String)
+    preferred_learning_style = Column(String)
+    target_role = Column(String)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = relationship("User", back_populates="profile")
+
+class UserSkill(Base):
+    __tablename__ = "user_skills"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    skill_name = Column(String, nullable=False)
+    skill_category = Column(String)
+    skill_level = Column(String)
+    confidence_score = Column(Integer)
+    
+    user = relationship("User", back_populates="skills")
+
+class UserLink(Base):
+    __tablename__ = "user_links"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    
+    user = relationship("User", back_populates="links")
+
+class UserInterest(Base):
+    __tablename__ = "user_interests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    domain = Column(String, nullable=False)
+    
+    user = relationship("User", back_populates="interests")
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -44,6 +84,48 @@ class Activity(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     submissions = relationship("ActivitySubmission", back_populates="activity")
+    activity_logs = relationship("UserActivityLog", back_populates="activity")
+    activity_skills = relationship("ActivitySkill", back_populates="activity")
+
+class ActivitySkill(Base):
+    __tablename__ = "activity_skills"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    activity_id = Column(Integer, ForeignKey("activities.id"))
+    skill_name = Column(String, nullable=False)
+    weight = Column(Float, nullable=False)
+    
+    activity = relationship("Activity", back_populates="activity_skills")
+
+class SkillGrowthLog(Base):
+    __tablename__ = "skill_growth_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    skill_name = Column(String, nullable=False)
+    previous_score = Column(Integer)
+    new_score = Column(Integer)
+    activity_id = Column(Integer, ForeignKey("activities.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserActivityLog(Base):
+    __tablename__ = "user_activity_log"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    activity_id = Column(Integer, ForeignKey("activities.id"))
+    status = Column(String, default="not_started")  # not_started, in_progress, completed, paused
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    time_spent_minutes = Column(Integer)
+    difficulty_feedback = Column(String)  # easy, medium, hard
+    completion_notes = Column(Text)
+    project_link = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User", back_populates="activity_logs")
+    activity = relationship("Activity", back_populates="activity_logs")
 
 class ActivitySubmission(Base):
     __tablename__ = "activity_submissions"

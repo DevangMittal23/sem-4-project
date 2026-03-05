@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.services.analytics_service import AnalyticsService
+from app.services.skill_growth_analytics_service import SkillGrowthAnalyticsService
 from app.auth.auth import get_current_user
 from app.models.models import User
 
@@ -24,3 +25,7 @@ def get_consistency_score(current_user: User = Depends(get_current_user), db: Se
 def get_engagement_score(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     score = AnalyticsService.calculate_engagement_score(db, current_user.id)
     return {"engagement_score": score}
+
+@router.get("/skill-growth")
+def get_skill_growth(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return SkillGrowthAnalyticsService.get_skill_growth_data(db, current_user.id)
