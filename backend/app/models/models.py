@@ -169,3 +169,14 @@ class Recommendation(Base):
     weekly_roadmap = Column(Text)
     progress_summary = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserBehaviorEvent(Base):
+    __tablename__ = "user_behavior_events"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    event_type = Column(String, nullable=False, index=True)
+    page = Column(String)
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    metadata_json = Column(Text)

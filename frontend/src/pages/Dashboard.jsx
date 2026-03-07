@@ -8,17 +8,20 @@ import { Bar } from 'react-chartjs-2';
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [chartData, setChartData] = useState({});
+  const [engagementMetrics, setEngagementMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashResponse, chartResponse] = await Promise.all([
+        const [dashResponse, chartResponse, engagementResponse] = await Promise.all([
           dashboardService.getData(),
-          analyticsService.getCompletionChart()
+          analyticsService.getCompletionChart(),
+          analyticsService.getUserEngagement()
         ]);
         setData(dashResponse.data);
+        setEngagementMetrics(engagementResponse.data);
         
         const dates = Object.keys(chartResponse.data).slice(-7);
         const values = dates.map(d => chartResponse.data[d]);
@@ -58,6 +61,36 @@ const Dashboard = () => {
           <p className="text-blue-100 text-lg">Career Goal: {data?.profile?.career_goal || 'Not set'}</p>
           <p className="text-blue-200 mt-2">Keep building your skills and tracking your progress!</p>
         </div>
+
+        {/* Engagement Metrics Cards */}
+        {engagementMetrics && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard
+              icon="🔥"
+              label="Learning Streak"
+              value={`${engagementMetrics.learning_streak} days`}
+              color="orange"
+            />
+            <StatCard
+              icon="⚡"
+              label="Engagement Score"
+              value={`${engagementMetrics.engagement_score}/100`}
+              color="green"
+            />
+            <StatCard
+              icon="📊"
+              label="Weekly Activity Rate"
+              value={`${engagementMetrics.weekly_activity_rate}/day`}
+              color="blue"
+            />
+            <StatCard
+              icon="✅"
+              label="Completion Rate"
+              value={`${engagementMetrics.activity_completion_rate}%`}
+              color="purple"
+            />
+          </div>
+        )}
 
         {/* Progress Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

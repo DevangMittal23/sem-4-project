@@ -56,6 +56,8 @@ export const analyticsService = {
   getConsistencyScore: () => api.get('/analytics/consistency-score'),
   getEngagementScore: () => api.get('/analytics/engagement-score'),
   getSkillGrowth: () => api.get('/analytics/skill-growth'),
+  getUserEngagement: () => api.get('/analytics/user-engagement'),
+  getEventTimeline: () => api.get('/analytics/event-timeline'),
 };
 
 export const recommendationService = {
