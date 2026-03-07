@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { dashboardService, analyticsService } from '../services/api';
+import { dashboardService, analyticsService, gamificationService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import StatCard from '../components/StatCard';
@@ -9,19 +9,22 @@ const Dashboard = () => {
   const [data, setData] = useState(null);
   const [chartData, setChartData] = useState({});
   const [engagementMetrics, setEngagementMetrics] = useState(null);
+  const [streakData, setStreakData] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashResponse, chartResponse, engagementResponse] = await Promise.all([
+        const [dashResponse, chartResponse, engagementResponse, streakResponse] = await Promise.all([
           dashboardService.getData(),
           analyticsService.getCompletionChart(),
-          analyticsService.getUserEngagement()
+          analyticsService.getUserEngagement(),
+          gamificationService.getStreak()
         ]);
         setData(dashResponse.data);
         setEngagementMetrics(engagementResponse.data);
+        setStreakData(streakResponse.data);
         
         const dates = Object.keys(chartResponse.data).slice(-7);
         const values = dates.map(d => chartResponse.data[d]);
@@ -61,6 +64,44 @@ const Dashboard = () => {
           <p className="text-blue-100 text-lg">Career Goal: {data?.profile?.career_goal || 'Not set'}</p>
           <p className="text-blue-200 mt-2">Keep building your skills and tracking your progress!</p>
         </div>
+
+        {/* Gamification Cards */}
+        {streakData && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-orange-500 to-red-600 text-white p-6 rounded-lg shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">🔥 Learning Streak</p>
+                  <p className="text-5xl font-bold mt-2">{streakData.current_streak}</p>
+                  <p className="text-xs opacity-75 mt-1">days in a row</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-yellow-500 to-orange-600 text-white p-6 rounded-lg shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">🏆 Longest Streak</p>
+                  <p className="text-5xl font-bold mt-2">{streakData.longest_streak}</p>
+                  <p className="text-xs opacity-75 mt-1">personal best</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white p-6 rounded-lg shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">⚡ Weekly Goal</p>
+                  <p className="text-5xl font-bold mt-2">{streakData.weekly_completed}/{streakData.weekly_goal}</p>
+                  <p className="text-xs opacity-75 mt-1">{streakData.weekly_progress}% complete</p>
+                </div>
+              </div>
+              <div className="mt-3 bg-white bg-opacity-30 rounded-full h-2">
+                <div className="bg-white h-2 rounded-full" style={{ width: `${streakData.weekly_progress}%` }}></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Engagement Metrics Cards */}
         {engagementMetrics && (

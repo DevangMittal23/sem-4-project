@@ -180,3 +180,32 @@ class UserBehaviorEvent(Base):
     activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     metadata_json = Column(Text)
+
+class UserStreak(Base):
+    __tablename__ = "user_streaks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_active_date = Column(DateTime)
+    weekly_goal = Column(Integer, default=5)
+    weekly_completed = Column(Integer, default=0)
+    week_start = Column(DateTime)
+
+class Badge(Base):
+    __tablename__ = "badges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    icon = Column(String)
+    criteria = Column(String)
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    badge_id = Column(Integer, ForeignKey("badges.id"))
+    earned_at = Column(DateTime, default=datetime.utcnow)

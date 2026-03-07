@@ -5,7 +5,7 @@ from app.database.connection import init_db
 from app.middleware.error_handler import validation_exception_handler, general_exception_handler
 from app.middleware.behavior_tracker import BehaviorTrackingMiddleware
 from app.controllers import auth_controller, user_controller, activity_controller, dashboard_controller
-from app.controllers import analytics_controller, recommendation_controller, admin_controller, ai_controller, behavior_controller, activity_lifecycle_controller, behavior_tracking_controller
+from app.controllers import analytics_controller, recommendation_controller, admin_controller, ai_controller, behavior_controller, activity_lifecycle_controller, behavior_tracking_controller, gamification_controller, personalized_recommendation_controller
 
 app = FastAPI(
     title="AI-Assisted Career Transition Platform",
@@ -41,6 +41,8 @@ app.include_router(admin_controller.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(ai_controller.router, prefix="/api/ai", tags=["AI (Placeholder)"])
 app.include_router(behavior_controller.router, prefix="/api/behavior", tags=["Behavior Metrics"])
 app.include_router(behavior_tracking_controller.router, prefix="/api/analytics", tags=["Behavior Tracking"])
+app.include_router(gamification_controller.router, prefix="/api/gamification", tags=["Gamification"])
+app.include_router(personalized_recommendation_controller.router, prefix="/api/recommendations", tags=["AI Recommendations"])
 
 @app.on_event("startup")
 def startup_event():

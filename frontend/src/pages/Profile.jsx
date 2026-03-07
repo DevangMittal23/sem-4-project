@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { userService } from '../services/api';
+import { userService, gamificationService } from '../services/api';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
+  const [badges, setBadges] = useState([]);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
@@ -17,6 +18,7 @@ const Profile = () => {
 
   useEffect(() => {
     fetchProfile();
+    fetchBadges();
   }, []);
 
   const fetchProfile = async () => {
@@ -27,6 +29,15 @@ const Profile = () => {
       if (requiresCompletion) setEditing(true);
     } catch (error) {
       console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchBadges = async () => {
+    try {
+      const response = await gamificationService.getBadges();
+      setBadges(response.data.badges);
+    } catch (error) {
+      console.error('Error fetching badges:', error);
     }
   };
 
@@ -222,6 +233,28 @@ const Profile = () => {
             </form>
           </div>
         )}
+
+        {/* Badges Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">🏆 Badges Earned</h2>
+          {badges.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {badges.map((badge) => (
+                <div key={badge.id} className="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300">
+                  <div className="text-5xl mb-2">{badge.icon}</div>
+                  <h3 className="font-bold text-gray-800">{badge.name}</h3>
+                  <p className="text-xs text-gray-600 mt-1">{badge.description}</p>
+                  <p className="text-xs text-gray-500 mt-2">{new Date(badge.earned_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p className="text-4xl mb-2">🎯</p>
+              <p>Complete activities to earn badges!</p>
+            </div>
+          )}
+        </div>
 
         {/* Skills Section */}
         <div className="bg-white rounded-lg shadow-md p-6">

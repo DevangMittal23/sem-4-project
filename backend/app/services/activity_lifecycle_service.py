@@ -94,10 +94,14 @@ class ActivityLifecycleService:
         db.commit()
         db.refresh(log)
         
-        # Update skills based on activity completion
+        # Update skills
         updated_skills = SkillTrackingService.update_skills_on_completion(
             db, user_id, activity_id, difficulty
         )
+        
+        # Update streak
+        from app.services.gamification_service import GamificationService
+        GamificationService.update_streak(db, user_id)
         
         return {"log": log, "updated_skills": updated_skills}
     

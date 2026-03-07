@@ -84,4 +84,13 @@ export const behaviorService = {
   getBehaviorSummary: () => api.get('/behavior/behavior-summary'),
 };
 
+export const gamificationService = {
+  getStreak: () => api.get('/gamification/streak'),
+  getBadges: () => api.get('/gamification/badges'),
+};
+
+export const aiRecommendationService = {
+  getPersonalized: () => api.get('/recommendations/personalized'),
+};
+
 export default api;
