@@ -44,7 +44,11 @@ def complete_activity(data: CompleteActivityRequest, current_user: User = Depend
         data.time_spent_minutes, data.difficulty_feedback,
         data.completion_notes, data.project_link
     )
-    return {"message": "Activity completed", "status": result.status}
+    return {
+        "message": "Activity completed",
+        "status": result["log"].status,
+        "updated_skills": result.get("updated_skills", [])
+    }
 
 @router.get("/user-progress")
 def get_user_progress(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
