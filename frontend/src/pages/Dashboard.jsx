@@ -1,30 +1,37 @@
 import { useState, useEffect } from 'react';
-import { dashboardService, analyticsService, gamificationService } from '../services/api';
+import { dashboardService, analyticsService, gamificationService, activityLifecycleService, aiRecommendationService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
-import StatCard from '../components/StatCard';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [chartData, setChartData] = useState({});
+  const [domainData, setDomainData] = useState({});
   const [engagementMetrics, setEngagementMetrics] = useState(null);
   const [streakData, setStreakData] = useState(null);
+  const [userProgress, setUserProgress] = useState(null);
+  const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashResponse, chartResponse, engagementResponse, streakResponse] = await Promise.all([
+        const [dashResponse, chartResponse, domainResponse, engagementResponse, streakResponse, progressResponse, recsResponse] = await Promise.all([
           dashboardService.getData(),
           analyticsService.getCompletionChart(),
+          analyticsService.getDomainEngagement(),
           analyticsService.getUserEngagement(),
-          gamificationService.getStreak()
+          gamificationService.getStreak(),
+          activityLifecycleService.getUserProgress(),
+          aiRecommendationService.getPersonalized()
         ]);
         setData(dashResponse.data);
         setEngagementMetrics(engagementResponse.data);
         setStreakData(streakResponse.data);
+        setUserProgress(progressResponse.data);
+        setRecommendations(recsResponse.data);
         
         const dates = Object.keys(chartResponse.data).slice(-7);
         const values = dates.map(d => chartResponse.data[d]);
@@ -34,9 +41,26 @@ const Dashboard = () => {
           datasets: [{
             label: 'Activities Completed',
             data: values,
-            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+            backgroundColor: 'rgba(59, 130, 246, 0.6)',
             borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 2
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        });
+
+        setDomainData({
+          labels: Object.keys(domainResponse.data),
+          datasets: [{
+            data: Object.values(domainResponse.data),
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.8)',
+              'rgba(16, 185, 129, 0.8)',
+              'rgba(245, 158, 11, 0.8)',
+              'rgba(239, 68, 68, 0.8)',
+              'rgba(139, 92, 246, 0.8)',
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
           }]
         });
       } catch (error) {
@@ -48,159 +72,165 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  if (loading) return <MainLayout><div className="text-center py-12">Loading...</div></MainLayout>;
-
-  const getDominantDomain = () => {
-    if (!data?.recommended_activities?.length) return 'General';
-    return data.recommended_activities[0]?.domain || 'General';
-  };
+  if (loading) return <MainLayout><div className="flex items-center justify-center h-screen"><div className="text-xl text-gray-600">Loading your dashboard...</div></div></MainLayout>;
 
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 rounded-lg shadow-lg">
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {data?.profile?.name}! 👋</h1>
-          <p className="text-blue-100 text-lg">Career Goal: {data?.profile?.career_goal || 'Not set'}</p>
-          <p className="text-blue-200 mt-2">Keep building your skills and tracking your progress!</p>
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white p-8 rounded-2xl shadow-2xl">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Welcome back, {data?.profile?.name}! 👋</h1>
+              <p className="text-lg opacity-90">🎯 {data?.profile?.career_goal || 'Set your career goal in profile'}</p>
+              <p className="text-sm opacity-75 mt-2">💼 {data?.profile?.current_job_role || 'Update your role'} • 📍 {data?.profile?.location || 'Add location'}</p>
+            </div>
+            <button onClick={() => navigate('/profile')} className="bg-white text-purple-600 px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition">
+              Edit Profile
+            </button>
+          </div>
         </div>
 
-        {/* Gamification Cards */}
+        {/* Gamification Streak Cards */}
         {streakData && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-orange-500 to-red-600 text-white p-6 rounded-lg shadow-lg">
+            <div className="bg-gradient-to-br from-orange-500 to-red-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90">🔥 Learning Streak</p>
-                  <p className="text-5xl font-bold mt-2">{streakData.current_streak}</p>
-                  <p className="text-xs opacity-75 mt-1">days in a row</p>
+                  <p className="text-sm opacity-90 font-medium">🔥 Current Streak</p>
+                  <p className="text-6xl font-bold mt-2">{streakData.current_streak}</p>
+                  <p className="text-sm opacity-75 mt-1">consecutive days</p>
                 </div>
+                <div className="text-7xl opacity-20">🔥</div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-yellow-500 to-orange-600 text-white p-6 rounded-lg shadow-lg">
+            <div className="bg-gradient-to-br from-yellow-500 to-orange-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90">🏆 Longest Streak</p>
-                  <p className="text-5xl font-bold mt-2">{streakData.longest_streak}</p>
-                  <p className="text-xs opacity-75 mt-1">personal best</p>
+                  <p className="text-sm opacity-90 font-medium">🏆 Best Streak</p>
+                  <p className="text-6xl font-bold mt-2">{streakData.longest_streak}</p>
+                  <p className="text-sm opacity-75 mt-1">personal record</p>
                 </div>
+                <div className="text-7xl opacity-20">🏆</div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white p-6 rounded-lg shadow-lg">
+            <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90">⚡ Weekly Goal</p>
-                  <p className="text-5xl font-bold mt-2">{streakData.weekly_completed}/{streakData.weekly_goal}</p>
-                  <p className="text-xs opacity-75 mt-1">{streakData.weekly_progress}% complete</p>
+                  <p className="text-sm opacity-90 font-medium">⚡ Weekly Goal</p>
+                  <p className="text-6xl font-bold mt-2">{streakData.weekly_completed}<span className="text-3xl">/{streakData.weekly_goal}</span></p>
+                  <p className="text-sm opacity-75 mt-1">{streakData.weekly_progress}% complete</p>
                 </div>
+                <div className="text-7xl opacity-20">⚡</div>
               </div>
-              <div className="mt-3 bg-white bg-opacity-30 rounded-full h-2">
-                <div className="bg-white h-2 rounded-full" style={{ width: `${streakData.weekly_progress}%` }}></div>
+              <div className="mt-4 bg-white bg-opacity-30 rounded-full h-3">
+                <div className="bg-white h-3 rounded-full transition-all duration-500" style={{ width: `${streakData.weekly_progress}%` }}></div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Engagement Metrics Cards */}
-        {engagementMetrics && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <StatCard
-              icon="🔥"
-              label="Learning Streak"
-              value={`${engagementMetrics.learning_streak} days`}
-              color="orange"
-            />
-            <StatCard
-              icon="⚡"
-              label="Engagement Score"
-              value={`${engagementMetrics.engagement_score}/100`}
-              color="green"
-            />
-            <StatCard
-              icon="📊"
-              label="Weekly Activity Rate"
-              value={`${engagementMetrics.weekly_activity_rate}/day`}
-              color="blue"
-            />
-            <StatCard
-              icon="✅"
-              label="Completion Rate"
-              value={`${engagementMetrics.activity_completion_rate}%`}
-              color="purple"
-            />
+        {/* Key Metrics Grid */}
+        {engagementMetrics && userProgress && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+              <div className="text-3xl mb-2">✅</div>
+              <div className="text-3xl font-bold text-green-600">{userProgress.total_completed}</div>
+              <div className="text-sm text-gray-600 mt-1">Completed</div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+              <div className="text-3xl mb-2">⚡</div>
+              <div className="text-3xl font-bold text-blue-600">{engagementMetrics.engagement_score}</div>
+              <div className="text-sm text-gray-600 mt-1">Engagement</div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+              <div className="text-3xl mb-2">🎯</div>
+              <div className="text-3xl font-bold text-purple-600">{userProgress.completion_rate.toFixed(0)}%</div>
+              <div className="text-sm text-gray-600 mt-1">Completion Rate</div>
+            </div>
+            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+              <div className="text-3xl mb-2">⏱️</div>
+              <div className="text-3xl font-bold text-orange-600">{userProgress.average_time_minutes}</div>
+              <div className="text-sm text-gray-600 mt-1">Avg Time (min)</div>
+            </div>
           </div>
         )}
 
-        {/* Progress Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard
-            icon="✅"
-            label="Activities Completed"
-            value={data?.completed_activities || 0}
-            color="green"
-          />
-          <StatCard
-            icon="🔥"
-            label="Weekly Consistency"
-            value={`${data?.weekly_consistency || 0}%`}
-            color="orange"
-          />
-          <StatCard
-            icon="🎯"
-            label="Active Domain"
-            value={getDominantDomain()}
-            color="purple"
-          />
-          <StatCard
-            icon="📊"
-            label="Progress Score"
-            value={`${Math.round(data?.progress_indicator || 0)}%`}
-            color="blue"
-          />
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span>📈</span> Weekly Progress
+            </h2>
+            {chartData.labels?.length > 0 ? (
+              <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <div className="text-5xl mb-3">📊</div>
+                <p>Start completing activities!</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span>🎨</span> Domain Distribution
+            </h2>
+            {domainData.labels?.length > 0 ? (
+              <Doughnut data={domainData} options={{ responsive: true, maintainAspectRatio: true }} />
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <div className="text-5xl mb-3">🎯</div>
+                <p>Explore different domains!</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Next Recommended Action */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-2xl font-bold mb-4">🚀 Next Recommended Action</h2>
-          {data?.recommended_activities?.length > 0 ? (
-            <div className="space-y-4">
-              {data.recommended_activities.slice(0, 1).map((activity) => (
-                <div key={activity.id} className="border-l-4 border-blue-500 pl-6 py-4 bg-blue-50 rounded-r-lg">
-                  <h3 className="text-xl font-bold text-gray-800">{activity.title}</h3>
-                  <p className="text-gray-600 mt-2">{activity.description}</p>
-                  <div className="flex gap-4 mt-4 text-sm">
-                    <span className="bg-blue-100 px-3 py-1 rounded-full text-blue-700 font-medium">
-                      {activity.domain}
-                    </span>
-                    <span className="bg-green-100 px-3 py-1 rounded-full text-green-700 font-medium">
-                      {activity.difficulty}
-                    </span>
-                    <span className="text-gray-500">⏱️ {activity.estimated_time}h</span>
+        {/* AI Recommendations */}
+        {recommendations?.recommended_activities?.length > 0 && (
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl shadow-lg border-2 border-purple-200">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <span>🤖</span> AI Recommended For You
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {recommendations.recommended_activities.slice(0, 3).map((activity) => (
+                <div key={activity.id} className="bg-white p-5 rounded-lg shadow hover:shadow-xl transition transform hover:-translate-y-1">
+                  <h3 className="font-bold text-lg mb-2">{activity.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
+                  <div className="flex gap-2 mb-3">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{activity.domain}</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">{activity.difficulty}</span>
                   </div>
-                  <button
-                    onClick={() => navigate('/activities')}
-                    className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Start Activity →
+                  <button onClick={() => navigate('/activities')} className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
+                    Start Now →
                   </button>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-500">Complete more activities to get personalized recommendations!</p>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Visual Analytics */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-2xl font-bold mb-4">📈 Weekly Activity Completion</h2>
-          {chartData.labels?.length > 0 ? (
-            <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: true }} />
-          ) : (
-            <p className="text-gray-500 text-center py-8">No activity data yet. Start completing activities!</p>
-          )}
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button onClick={() => navigate('/activities')} className="bg-blue-600 text-white p-6 rounded-xl hover:bg-blue-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+            <div className="text-4xl mb-2">📚</div>
+            <div className="font-bold">Browse Activities</div>
+          </button>
+          <button onClick={() => navigate('/progress')} className="bg-green-600 text-white p-6 rounded-xl hover:bg-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+            <div className="text-4xl mb-2">📊</div>
+            <div className="font-bold">View Progress</div>
+          </button>
+          <button onClick={() => navigate('/recommendations')} className="bg-purple-600 text-white p-6 rounded-xl hover:bg-purple-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+            <div className="text-4xl mb-2">🎯</div>
+            <div className="font-bold">Get Recommendations</div>
+          </button>
+          <button onClick={() => navigate('/profile')} className="bg-orange-600 text-white p-6 rounded-xl hover:bg-orange-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+            <div className="text-4xl mb-2">👤</div>
+            <div className="font-bold">My Profile</div>
+          </button>
         </div>
       </div>
     </MainLayout>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { analyticsService, activityService, activityLifecycleService } from '../services/api';
 import MainLayout from '../layouts/MainLayout';
 import { Line, Doughnut, Radar, Bar } from 'react-chartjs-2';
+import { useNavigate } from 'react-router-dom';
 
 const Progress = () => {
   const [completionData, setCompletionData] = useState({});
@@ -10,18 +11,21 @@ const Progress = () => {
   const [scores, setScores] = useState({ consistency: 0, engagement: 0 });
   const [userProgress, setUserProgress] = useState(null);
   const [skillGrowth, setSkillGrowth] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [completion, domain, subs, consistency, engagement, progress, skills] = await Promise.all([
+        const [completion, domain, subs, consistency, engagement, progress, skills, allActivities] = await Promise.all([
           analyticsService.getCompletionChart(),
           analyticsService.getDomainEngagement(),
           activityService.getMySubmissions(),
           analyticsService.getConsistencyScore(),
           analyticsService.getEngagementScore(),
           activityLifecycleService.getUserProgress(),
-          analyticsService.getSkillGrowth()
+          analyticsService.getSkillGrowth(),
+          activityService.getAll()
         ]);
         
         setCompletionData(completion.data);
@@ -33,12 +37,37 @@ const Progress = () => {
         });
         setUserProgress(progress.data);
         setSkillGrowth(skills.data);
+        setActivities(allActivities.data);
       } catch (error) {
         console.error('Error fetching progress data:', error);
       }
     };
     fetchData();
   }, []);
+
+  const getActivityById = (id) => {
+    return activities.find(a => a.id === id);
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      completed: 'bg-green-100 text-green-800 border-green-300',
+      in_progress: 'bg-blue-100 text-blue-800 border-blue-300',
+      paused: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      not_started: 'bg-gray-100 text-gray-800 border-gray-300'
+    };
+    return colors[status] || colors.not_started;
+  };
+
+  const getStatusIcon = (status) => {
+    const icons = {
+      completed: '✅',
+      in_progress: '⏳',
+      paused: '⏸️',
+      not_started: '▫️'
+    };
+    return icons[status] || icons.not_started;
+  };
 
   const timelineChartData = {
     labels: Object.keys(completionData).map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
@@ -250,7 +279,69 @@ const Progress = () => {
           )}
         </div>
 
-        {/* Domain Distribution */}
+        {/* Activity Status List */}
+        {userProgress && userProgress.activities && (
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-2xl font-bold mb-4">📋 Activity Status Tracker</h2>
+            <div className="space-y-3">
+              {userProgress.activities.map((log) => {
+                const activity = getActivityById(log.activity_id);
+                if (!activity) return null;
+                return (
+                  <div key={log.id} className={`border-2 rounded-lg p-4 ${getStatusColor(log.status)}`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl">{getStatusIcon(log.status)}</span>
+                          <h3 className="font-bold text-lg">{activity.title}</h3>
+                        </div>
+                        <div className="flex gap-3 text-sm mb-2">
+                          <span className="px-2 py-1 bg-white rounded">{activity.domain}</span>
+                          <span className="px-2 py-1 bg-white rounded">{activity.difficulty}</span>
+                          {log.time_spent_minutes && (
+                            <span className="px-2 py-1 bg-white rounded">⏱️ {log.time_spent_minutes} min</span>
+                          )}
+                        </div>
+                        {log.status === 'completed' && log.difficulty_feedback && (
+                          <div className="text-sm">
+                            <span className="font-medium">Difficulty: </span>
+                            <span className="capitalize">{log.difficulty_feedback}</span>
+                          </div>
+                        )}
+                        {log.project_link && (
+                          <a href={log.project_link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                            🔗 View Project
+                          </a>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-600">
+                          {log.start_time && new Date(log.start_time).toLocaleDateString()}
+                        </div>
+                        {log.status !== 'completed' && (
+                          <button
+                            onClick={() => navigate('/activities')}
+                            className="mt-2 text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            Continue
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {(!userProgress.activities || userProgress.activities.length === 0) && (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-4xl mb-2">📊</p>
+                <p>Start activities to track your progress!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent Submissions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-2xl font-bold mb-4">Domain Skill Distribution</h2>
