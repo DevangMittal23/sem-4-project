@@ -13,8 +13,17 @@ class DashboardService:
         engagement = AnalyticsService.calculate_engagement_score(db, user_id)
         recommended = RecommendationService.get_recommended_activities(db, user_id)
         
+        profile_dict = {
+            "name": profile.name,
+            "current_job_role": profile.current_job_role,
+            "location": profile.location,
+            "career_goal": profile.career_goal,
+            "years_of_experience": profile.years_of_experience,
+            "weekly_available_time": profile.weekly_available_time
+        } if profile else {}
+        
         return {
-            "profile": profile,
+            "profile": profile_dict,
             "completed_activities": len(submissions),
             "weekly_consistency": consistency,
             "progress_indicator": engagement,

@@ -50,6 +50,8 @@ const Profile = () => {
       setEditing(false);
       if (requiresCompletion) {
         navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { state: { refresh: true } });
       }
     } catch (error) {
       console.error('Error updating profile:', error);

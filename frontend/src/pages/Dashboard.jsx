@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { dashboardService, analyticsService, gamificationService, activityLifecycleService, aiRecommendationService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
@@ -14,63 +14,72 @@ const Dashboard = () => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const fetchData = async () => {
+    try {
+      const [dashResponse, chartResponse, domainResponse, engagementResponse, streakResponse, progressResponse, recsResponse] = await Promise.all([
+        dashboardService.getData(),
+        analyticsService.getCompletionChart(),
+        analyticsService.getDomainEngagement(),
+        analyticsService.getUserEngagement(),
+        gamificationService.getStreak(),
+        activityLifecycleService.getUserProgress(),
+        aiRecommendationService.getPersonalized()
+      ]);
+      setData(dashResponse.data);
+      setEngagementMetrics(engagementResponse.data);
+      setStreakData(streakResponse.data);
+      setUserProgress(progressResponse.data);
+      setRecommendations(recsResponse.data);
+      
+      const dates = Object.keys(chartResponse.data).slice(-7);
+      const values = dates.map(d => chartResponse.data[d]);
+      
+      setChartData({
+        labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+        datasets: [{
+          label: 'Activities Completed',
+          data: values,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 2,
+          borderRadius: 8
+        }]
+      });
+
+      setDomainData({
+        labels: Object.keys(domainResponse.data),
+        datasets: [{
+          data: Object.values(domainResponse.data),
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(139, 92, 246, 0.8)',
+          ],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [dashResponse, chartResponse, domainResponse, engagementResponse, streakResponse, progressResponse, recsResponse] = await Promise.all([
-          dashboardService.getData(),
-          analyticsService.getCompletionChart(),
-          analyticsService.getDomainEngagement(),
-          analyticsService.getUserEngagement(),
-          gamificationService.getStreak(),
-          activityLifecycleService.getUserProgress(),
-          aiRecommendationService.getPersonalized()
-        ]);
-        setData(dashResponse.data);
-        setEngagementMetrics(engagementResponse.data);
-        setStreakData(streakResponse.data);
-        setUserProgress(progressResponse.data);
-        setRecommendations(recsResponse.data);
-        
-        const dates = Object.keys(chartResponse.data).slice(-7);
-        const values = dates.map(d => chartResponse.data[d]);
-        
-        setChartData({
-          labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-          datasets: [{
-            label: 'Activities Completed',
-            data: values,
-            backgroundColor: 'rgba(59, 130, 246, 0.6)',
-            borderColor: 'rgb(59, 130, 246)',
-            borderWidth: 2,
-            borderRadius: 8
-          }]
-        });
-
-        setDomainData({
-          labels: Object.keys(domainResponse.data),
-          datasets: [{
-            data: Object.values(domainResponse.data),
-            backgroundColor: [
-              'rgba(59, 130, 246, 0.8)',
-              'rgba(16, 185, 129, 0.8)',
-              'rgba(245, 158, 11, 0.8)',
-              'rgba(239, 68, 68, 0.8)',
-              'rgba(139, 92, 246, 0.8)',
-            ],
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.refresh) {
+      fetchData();
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   if (loading) return <MainLayout><div className="flex items-center justify-center h-screen"><div className="text-xl text-gray-600">Loading your dashboard...</div></div></MainLayout>;
 
