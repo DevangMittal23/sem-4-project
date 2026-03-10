@@ -22,7 +22,7 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-white h-screen shadow-lg fixed left-0 top-0 flex flex-col">
       <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-blue-600">Career Platform</h1>
+        <h1 className="text-xl font-bold text-blue-600">🚀 CareerBoost</h1>
       </div>
       
       <nav className="flex-1 p-4">
