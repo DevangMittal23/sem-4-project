@@ -13,7 +13,9 @@ const Navbar = () => {
   return (
     <nav className="bg-blue-600 text-white shadow-lg">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold">Career Transition Platform</Link>
+        <Link to="/" className="text-2xl font-bold">
+          <span className="bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">🚀 CareerBoost</span>
+        </Link>
         {user && (
           <div className="flex gap-4 items-center">
             <Link to="/dashboard" className="hover:text-blue-200">Dashboard</Link>
