@@ -51,11 +51,11 @@ const Progress = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      completed: 'bg-green-100 text-green-800 border-green-300',
-      in_progress: 'bg-blue-100 text-blue-800 border-blue-300',
-      paused: 'bg-yellow-100 text-yellow-800 border-yellow-300'
+      completed: 'bg-green-500/15 text-green-300 border-green-500/30',
+      in_progress: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+      paused: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+    return colors[status] || 'bg-white/[0.06] text-gray-300 border-white/10';
   };
 
   const getStatusIcon = (status) => {
@@ -67,7 +67,7 @@ const Progress = () => {
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-20">
-          <div className="text-2xl text-gray-600">Loading...</div>
+          <div className="text-2xl text-slate-400">Loading...</div>
         </div>
       </MainLayout>
     );
@@ -96,68 +96,88 @@ const Progress = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">📈 Your Progress</h1>
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white p-8 rounded-2xl shadow-2xl">
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <span>📈</span> Your Progress
+          </h1>
+          <p className="text-lg opacity-90 mt-2">Track your learning journey and achievements</p>
+        </div>
 
         {/* Stats */}
         {data.userProgress && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Completed</h3>
-              <p className="text-4xl font-bold text-green-600">{data.userProgress.total_completed}</p>
+            <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-8 rounded-2xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1">
+              <h3 className="text-lg font-semibold mb-2 opacity-90">Total Completed</h3>
+              <p className="text-5xl font-bold">{data.userProgress.total_completed}</p>
+              <div className="text-6xl opacity-20 absolute right-4 bottom-4">✅</div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Average Time</h3>
-              <p className="text-4xl font-bold text-blue-600">{data.userProgress.average_time_minutes} min</p>
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-8 rounded-2xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1 relative">
+              <h3 className="text-lg font-semibold mb-2 opacity-90">Average Time</h3>
+              <p className="text-5xl font-bold">{data.userProgress.average_time_minutes} <span className="text-2xl">min</span></p>
+              <div className="text-6xl opacity-20 absolute right-4 bottom-4">⏱️</div>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Completion Rate</h3>
-              <p className="text-4xl font-bold text-purple-600">{data.userProgress.completion_rate.toFixed(1)}%</p>
+            <div className="bg-gradient-to-br from-purple-500 to-pink-600 text-white p-8 rounded-2xl shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1 relative">
+              <h3 className="text-lg font-semibold mb-2 opacity-90">Completion Rate</h3>
+              <p className="text-5xl font-bold">{data.userProgress.completion_rate.toFixed(1)}<span className="text-2xl">%</span></p>
+              <div className="text-6xl opacity-20 absolute right-4 bottom-4">🎯</div>
             </div>
           </div>
         )}
 
         {/* Scores */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Consistency Score</h3>
-            <p className="text-4xl font-bold text-blue-600">{data.scores.consistency}%</p>
-            <div className="mt-4 bg-gray-200 rounded-full h-3">
-              <div className="bg-blue-600 h-3 rounded-full" style={{ width: `${data.scores.consistency}%` }}></div>
+          <div className="bg-white/[0.06] backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-[3px]">
+            <h3 className="text-lg font-semibold text-slate-300 mb-2">Consistency Score</h3>
+            <p className="text-4xl font-bold text-blue-400">{data.scores.consistency}%</p>
+            <div className="mt-4 bg-white/[0.15] rounded-full h-3">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500" style={{ width: `${data.scores.consistency}%` }}></div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Engagement Score</h3>
-            <p className="text-4xl font-bold text-green-600">{data.scores.engagement}%</p>
-            <div className="mt-4 bg-gray-200 rounded-full h-3">
-              <div className="bg-green-600 h-3 rounded-full" style={{ width: `${data.scores.engagement}%` }}></div>
+          <div className="bg-white/[0.06] backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-[3px]">
+            <h3 className="text-lg font-semibold text-slate-300 mb-2">Engagement Score</h3>
+            <p className="text-4xl font-bold text-green-400">{data.scores.engagement}%</p>
+            <div className="mt-4 bg-white/[0.15] rounded-full h-3">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500" style={{ width: `${data.scores.engagement}%` }}></div>
             </div>
           </div>
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold mb-4">Activity Timeline</h2>
+          <div className="bg-white/[0.06] backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-[3px]">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-100">
+              <span>📈</span> Activity Timeline
+            </h2>
             {Object.keys(data.completionData).length > 0 ? (
-              <Line data={timelineData} options={{ responsive: true, maintainAspectRatio: true }} />
+              <Line data={timelineData} options={{ responsive: true, maintainAspectRatio: true, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.06)' } } }, plugins: { legend: { labels: { color: '#cbd5e1' } } } }} />
             ) : (
-              <p className="text-gray-500 text-center py-8">No data yet</p>
+              <div className="text-center py-12">
+                <p className="text-6xl mb-3">📉</p>
+                <p className="text-slate-400 font-medium">No data yet</p>
+              </div>
             )}
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold mb-4">Domain Distribution</h2>
+          <div className="bg-white/[0.06] backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-[3px]">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-100">
+              <span>🎯</span> Domain Distribution
+            </h2>
             {Object.keys(data.domainData).length > 0 ? (
-              <Doughnut data={domainChartData} />
+              <Doughnut data={domainChartData} options={{ plugins: { legend: { labels: { color: '#cbd5e1' } } } }} />
             ) : (
-              <p className="text-gray-500 text-center py-8">No data yet</p>
+              <div className="text-center py-12">
+                <p className="text-6xl mb-3">🎨</p>
+                <p className="text-slate-400 font-medium">No data yet</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Activity Status */}
         {data.userProgress?.activities && data.userProgress.activities.length > 0 && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold mb-4">📋 Activity Status</h2>
+          <div className="bg-white/[0.06] backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/[0.08]">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-100">
+              <span>📋</span> Activity Status
+            </h2>
             <div className="space-y-3">
               {data.userProgress.activities.map((log) => {
                 const activity = getActivityById(log.activity_id);
@@ -171,9 +191,9 @@ const Progress = () => {
                           <h3 className="font-bold text-lg">{activity.title}</h3>
                         </div>
                         <div className="flex gap-3 text-sm">
-                          <span className="px-2 py-1 bg-white rounded">{activity.domain}</span>
-                          <span className="px-2 py-1 bg-white rounded">{activity.difficulty}</span>
-                          {log.time_spent_minutes && <span className="px-2 py-1 bg-white rounded">⏱️ {log.time_spent_minutes} min</span>}
+                          <span className="px-2 py-1 bg-white/10 rounded text-slate-300">{activity.domain}</span>
+                          <span className="px-2 py-1 bg-white/10 rounded text-slate-300">{activity.difficulty}</span>
+                          {log.time_spent_minutes && <span className="px-2 py-1 bg-white/10 rounded text-slate-300">⏱️ {log.time_spent_minutes} min</span>}
                         </div>
                       </div>
                       {log.status !== 'completed' && (
@@ -190,11 +210,11 @@ const Progress = () => {
         )}
 
         {(!data.userProgress?.activities || data.userProgress.activities.length === 0) && (
-          <div className="bg-white p-12 rounded-lg shadow text-center">
+          <div className="bg-white/[0.06] backdrop-blur-md p-12 rounded-2xl shadow-lg border border-white/[0.08] text-center">
             <div className="text-6xl mb-4">📊</div>
-            <h2 className="text-2xl font-bold mb-2">No Activities Yet</h2>
-            <p className="text-gray-600 mb-6">Start completing activities to see your progress!</p>
-            <button onClick={() => navigate('/activities')} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <h2 className="text-2xl font-bold mb-2 text-gray-100">No Activities Yet</h2>
+            <p className="text-slate-400 mb-6">Start completing activities to see your progress!</p>
+            <button onClick={() => navigate('/activities')} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-lg transition">
               Browse Activities
             </button>
           </div>

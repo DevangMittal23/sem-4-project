@@ -59,53 +59,74 @@ const Analytics = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Analytics</h1>
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white p-8 rounded-2xl shadow-2xl">
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <span>📊</span> Analytics
+          </h1>
+          <p className="text-lg opacity-90 mt-2">Track your progress and insights</p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-bold mb-4">Activity Completion Timeline</h2>
+          <div className="bg-gradient-to-br from-white to-blue-50 p-8 rounded-2xl shadow-xl border-2 border-blue-200">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <span>📊</span> Activity Completion Timeline
+            </h2>
             {Object.keys(completionData).length > 0 ? (
               <Bar data={completionChartData} />
             ) : (
-              <p className="text-gray-500">No data available</p>
+              <div className="text-center py-12">
+                <p className="text-5xl mb-3">📈</p>
+                <p className="text-gray-500 font-medium">No data available</p>
+              </div>
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-bold mb-4">Domain Engagement</h2>
+          <div className="bg-gradient-to-br from-white to-purple-50 p-8 rounded-2xl shadow-xl border-2 border-purple-200">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <span>🎯</span> Domain Engagement
+            </h2>
             {Object.keys(domainData).length > 0 ? (
               <Doughnut data={domainChartData} />
             ) : (
-              <p className="text-gray-500">No data available</p>
+              <div className="text-center py-12">
+                <p className="text-5xl mb-3">🎨</p>
+                <p className="text-gray-500 font-medium">No data available</p>
+              </div>
             )}
           </div>
         </div>
 
         {recommendations && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-bold mb-4">Career Path Recommendations</h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2">Suggested Career Paths:</h3>
-                <ul className="list-disc list-inside space-y-1">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-2xl shadow-xl border-2 border-purple-300">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <span>🤖</span> Career Path Recommendations
+            </h2>
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="font-bold text-lg mb-3 text-purple-700">Suggested Career Paths:</h3>
+                <ul className="space-y-2">
                   {recommendations.career_paths.map((path, idx) => (
-                    <li key={idx} className="text-gray-700">{path}</li>
+                    <li key={idx} className="flex items-start gap-2 text-gray-700">
+                      <span className="text-purple-500 font-bold">•</span>
+                      <span>{path}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2">Weekly Roadmap:</h3>
-                <div className="space-y-2">
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="font-bold text-lg mb-3 text-blue-700">Weekly Roadmap:</h3>
+                <div className="space-y-3">
                   {Object.entries(recommendations.weekly_roadmap).map(([week, task]) => (
-                    <div key={week} className="border-l-4 border-blue-500 pl-4 py-2">
-                      <span className="font-semibold">{week.replace('_', ' ').toUpperCase()}:</span> {task}
+                    <div key={week} className="border-l-4 border-blue-500 bg-blue-50 pl-4 py-3 rounded-r-lg">
+                      <span className="font-bold text-blue-700">{week.replace('_', ' ').toUpperCase()}:</span>
+                      <span className="text-gray-700 ml-2">{task}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2">Progress Summary:</h3>
-                <p className="text-gray-700">{recommendations.progress_summary}</p>
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="font-bold text-lg mb-3 text-green-700">Progress Summary:</h3>
+                <p className="text-gray-700 leading-relaxed">{recommendations.progress_summary}</p>
               </div>
             </div>
           </div>

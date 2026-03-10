@@ -60,7 +60,7 @@ const Dashboard = () => {
             'rgba(139, 92, 246, 0.8)',
           ],
           borderWidth: 2,
-          borderColor: '#fff'
+          borderColor: 'rgba(255,255,255,0.15)'
         }]
       });
     } catch (error) {
@@ -81,7 +81,7 @@ const Dashboard = () => {
     }
   }, [location]);
 
-  if (loading) return <MainLayout><div className="flex items-center justify-center h-screen"><div className="text-xl text-gray-600">Loading your dashboard...</div></div></MainLayout>;
+  if (loading) return <MainLayout><div className="flex items-center justify-center h-screen"><div className="text-2xl text-white font-semibold">Loading your dashboard...</div></div></MainLayout>;
 
   return (
     <MainLayout>
@@ -144,53 +144,57 @@ const Dashboard = () => {
         {/* Key Metrics Grid */}
         {engagementMetrics && userProgress && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <div className="bg-white/[0.06] backdrop-blur-md p-5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.25)] border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] hover:-translate-y-1 transition-all duration-200">
               <div className="text-3xl mb-2">✅</div>
-              <div className="text-3xl font-bold text-green-600">{userProgress.total_completed}</div>
-              <div className="text-sm text-gray-600 mt-1">Completed</div>
+              <div className="text-3xl font-bold text-green-400">{userProgress.total_completed}</div>
+              <div className="text-sm text-slate-400 mt-1">Completed</div>
             </div>
-            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <div className="bg-white/[0.06] backdrop-blur-md p-5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.25)] border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] hover:-translate-y-1 transition-all duration-200">
               <div className="text-3xl mb-2">⚡</div>
-              <div className="text-3xl font-bold text-blue-600">{engagementMetrics.engagement_score}</div>
-              <div className="text-sm text-gray-600 mt-1">Engagement</div>
+              <div className="text-3xl font-bold text-blue-400">{engagementMetrics.engagement_score}</div>
+              <div className="text-sm text-slate-400 mt-1">Engagement</div>
             </div>
-            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <div className="bg-white/[0.06] backdrop-blur-md p-5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.25)] border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] hover:-translate-y-1 transition-all duration-200">
               <div className="text-3xl mb-2">🎯</div>
-              <div className="text-3xl font-bold text-purple-600">{userProgress.completion_rate.toFixed(0)}%</div>
-              <div className="text-sm text-gray-600 mt-1">Completion Rate</div>
+              <div className="text-3xl font-bold text-purple-400">{userProgress.completion_rate.toFixed(0)}%</div>
+              <div className="text-sm text-slate-400 mt-1">Completion Rate</div>
             </div>
-            <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <div className="bg-white/[0.06] backdrop-blur-md p-5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.25)] border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] hover:-translate-y-1 transition-all duration-200">
               <div className="text-3xl mb-2">⏱️</div>
-              <div className="text-3xl font-bold text-orange-600">{userProgress.average_time_minutes}</div>
-              <div className="text-sm text-gray-600 mt-1">Avg Time (min)</div>
+              <div className="text-3xl font-bold text-orange-400">{userProgress.average_time_minutes}</div>
+              <div className="text-sm text-slate-400 mt-1">Avg Time (min)</div>
             </div>
           </div>
         )}
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-xl shadow-xl hover:shadow-2xl transition">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
               <span>📈</span> Weekly Progress
             </h2>
             {chartData.labels?.length > 0 ? (
-              <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
+              <div className="bg-white/[0.06] p-4 rounded-xl border border-white/[0.08]">
+                <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.06)' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.06)' } } } }} />
+              </div>
             ) : (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-gray-300">
                 <div className="text-5xl mb-3">📊</div>
                 <p>Start completing activities!</p>
               </div>
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-xl shadow-xl hover:shadow-2xl transition">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
               <span>🎨</span> Domain Distribution
             </h2>
             {domainData.labels?.length > 0 ? (
-              <Doughnut data={domainData} options={{ responsive: true, maintainAspectRatio: true }} />
+              <div className="bg-white/[0.06] p-4 rounded-xl border border-white/[0.08]">
+                <Doughnut data={domainData} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#cbd5e1' } } } }} />
+              </div>
             ) : (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-gray-300">
                 <div className="text-5xl mb-3">🎯</div>
                 <p>Explore different domains!</p>
               </div>
@@ -200,20 +204,20 @@ const Dashboard = () => {
 
         {/* AI Recommendations */}
         {recommendations?.recommended_activities?.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl shadow-lg border-2 border-purple-200">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-xl shadow-xl">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
               <span>🤖</span> AI Recommended For You
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {recommendations.recommended_activities.slice(0, 3).map((activity) => (
-                <div key={activity.id} className="bg-white p-5 rounded-lg shadow hover:shadow-xl transition transform hover:-translate-y-1">
-                  <h3 className="font-bold text-lg mb-2">{activity.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
-                  <div className="flex gap-2 mb-3">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{activity.domain}</span>
-                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">{activity.difficulty}</span>
+                <div key={activity.id} className="bg-white/[0.06] backdrop-blur-md p-5 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.25)] border border-white/[0.08] hover:shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-all duration-200 hover:-translate-y-1">
+                  <h3 className="font-bold text-lg mb-2 text-gray-100">{activity.title}</h3>
+                  <p className="text-sm text-slate-400 mb-3 line-clamp-2">{activity.description}</p>
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-medium">{activity.domain}</span>
+                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-xs font-medium">{activity.difficulty}</span>
                   </div>
-                  <button onClick={() => navigate('/activities')} className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
+                  <button onClick={() => navigate('/activities')} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition text-sm font-medium shadow-lg">
                     Start Now →
                   </button>
                 </div>

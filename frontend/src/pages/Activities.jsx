@@ -84,7 +84,12 @@ const Activities = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Activities</h1>
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 rounded-2xl shadow-2xl">
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <span>📋</span> Activities
+          </h1>
+          <p className="text-lg opacity-90 mt-2">Explore and complete activities to boost your career</p>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {activities.map((activity) => (
@@ -113,40 +118,40 @@ const Activities = () => {
         )}
 
         {viewingDetails && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h2 className="text-2xl font-bold mb-4">Submission Details</h2>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-gray-500 text-sm">Activity</p>
-                  <p className="font-semibold">{viewingDetails.activity.title}</p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-[#1a2650] to-[#0f1a36] rounded-2xl p-8 max-w-md w-full shadow-2xl border border-white/10">
+              <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Submission Details</h2>
+              <div className="space-y-4">
+                <div className="bg-blue-500/15 border border-blue-500/20 p-4 rounded-xl">
+                  <p className="text-slate-400 text-sm font-medium mb-1">Activity</p>
+                  <p className="font-bold text-lg text-gray-100">{viewingDetails.activity.title}</p>
                 </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Time Spent</p>
-                  <p className="font-semibold">{viewingDetails.status.time_spent_minutes} minutes</p>
+                <div className="bg-green-500/15 border border-green-500/20 p-4 rounded-xl">
+                  <p className="text-slate-400 text-sm font-medium mb-1">Time Spent</p>
+                  <p className="font-bold text-lg text-gray-100">{viewingDetails.status.time_spent_minutes} minutes</p>
                 </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Difficulty</p>
-                  <p className="font-semibold capitalize">{viewingDetails.status.difficulty_feedback}</p>
+                <div className="bg-purple-500/15 border border-purple-500/20 p-4 rounded-xl">
+                  <p className="text-slate-400 text-sm font-medium mb-1">Difficulty</p>
+                  <p className="font-bold text-lg text-gray-100 capitalize">{viewingDetails.status.difficulty_feedback}</p>
                 </div>
                 {viewingDetails.status.project_link && (
-                  <div>
-                    <p className="text-gray-500 text-sm">Project Link</p>
-                    <a href={viewingDetails.status.project_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <div className="bg-orange-500/15 border border-orange-500/20 p-4 rounded-xl">
+                    <p className="text-slate-400 text-sm font-medium mb-1">Project Link</p>
+                    <a href={viewingDetails.status.project_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 font-semibold hover:underline break-all">
                       {viewingDetails.status.project_link}
                     </a>
                   </div>
                 )}
                 {viewingDetails.status.completion_notes && (
-                  <div>
-                    <p className="text-gray-500 text-sm">Notes</p>
-                    <p className="text-gray-700">{viewingDetails.status.completion_notes}</p>
+                  <div className="bg-pink-500/15 border border-pink-500/20 p-4 rounded-xl">
+                    <p className="text-slate-400 text-sm font-medium mb-1">Notes</p>
+                    <p className="text-slate-300">{viewingDetails.status.completion_notes}</p>
                   </div>
                 )}
               </div>
               <button
                 onClick={() => setViewingDetails(null)}
-                className="mt-4 w-full bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+                className="mt-6 w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 rounded-xl hover:from-gray-700 hover:to-gray-800 transition font-semibold shadow-lg"
               >
                 Close
               </button>
