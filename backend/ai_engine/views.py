@@ -61,19 +61,25 @@ class ProfileChatView(APIView):
 
         missing = [f for f in PROFILE_REQUIRED if not getattr(profile, f, "")]
         if not missing:
-            return Response({"message": "Profile is already complete.", "is_complete": True})
+            return Response({"message": "Profile is already complete.", "is_complete": True,
+                             "profile_completion": profile.profile_completion})
 
         user_message = request.data.get("message", "")
         history = request.data.get("history", [])
 
         result = profile_completion_chat(missing, history, user_message)
 
-        if result["is_complete"] and result.get("collected"):
+        # Save any collected fields immediately
+        if result.get("collected"):
+            changed = False
             for field, value in result["collected"].items():
                 if hasattr(profile, field) and value:
                     setattr(profile, field, value)
-            profile.save()
-            logger.info("Profile completed via chat for %s", request.user.email)
+                    changed = True
+            if changed:
+                profile.save()
+                logger.info("Profile fields saved for %s: %s (completion: %d%%)",
+                            request.user.email, list(result["collected"].keys()), profile.profile_completion)
 
         return Response({
             "reply": result["reply"],

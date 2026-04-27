@@ -45,11 +45,16 @@ export default function ProfileChatbot({ onComplete }: ProfileChatbotProps) {
       setTyping(false);
       setHistory(res.history);
 
+      // Update backend_completion live after every turn
+      if (res.profile_completion !== undefined) {
+        updateProfile({ backend_completion: res.profile_completion });
+      }
+
       if (res.is_complete) {
         addAI(res.reply);
         addAI("✅ Your profile is now complete! All features are unlocked.");
         setDone(true);
-        // Sync fresh profile from backend
+        // Final sync from backend
         try {
           const p = await apiGetProfile();
           updateProfile({
