@@ -1,0 +1,133 @@
+{
+  "sections": {
+    "S1": { "id": "S1", "name": "Identity & Current State", "description": "Let's understand who you are" },
+    "S2_SWITCH": { "id": "S2_SWITCH", "name": "Domain Switch", "description": "Exploring your new direction" },
+    "S2_EXCEL": { "id": "S2_EXCEL", "name": "Skill Excellence", "description": "Deepening your current expertise" },
+    "S3": { "id": "S3", "name": "Career Goals", "description": "Understanding your aspirations" }
+  },
+  "questions": {
+    "S1Q1": {
+      "id": "S1Q1", "section": "S1", "type": "text",
+      "text": "What is your name?", "field": "name", "next_question": "S1Q2"
+    },
+    "S1Q2": {
+      "id": "S1Q2", "section": "S1", "type": "text",
+      "text": "What is your current profession?", "field": "profession", "next_question": "S1Q3"
+    },
+    "S1Q3": {
+      "id": "S1Q3", "section": "S1", "type": "slider",
+      "text": "How many years of experience do you have?",
+      "field": "experience", "min": 0, "max": 30, "next_question": "S1Q4"
+    },
+    "S1Q4": {
+      "id": "S1Q4", "section": "S1", "type": "card_select",
+      "text": "What is your current role level?", "field": "level",
+      "options": [
+        { "value": "Fresher", "label": "🌱 Fresher" },
+        { "value": "Junior", "label": "🔰 Junior" },
+        { "value": "Mid", "label": "⚡ Mid" },
+        { "value": "Senior", "label": "🚀 Senior" },
+        { "value": "Lead", "label": "👑 Lead" }
+      ],
+      "next_question": "S1Q5"
+    },
+    "S1Q5": {
+      "id": "S1Q5", "section": "S1", "type": "card_select",
+      "text": "What is your goal?", "field": "goal",
+      "options": [
+        { "value": "Switch Domain", "label": "🔄 Switch Domain" },
+        { "value": "Excel in Current Domain", "label": "⭐ Excel in Current Domain" }
+      ],
+      "branching": {
+        "Switch Domain": "S2_SWITCH_Q1",
+        "Excel in Current Domain": "S2_EXCEL_Q1"
+      }
+    },
+
+    "S2_SWITCH_Q1": {
+      "id": "S2_SWITCH_Q1", "section": "S2_SWITCH", "type": "card_select",
+      "text": "Which domain are you looking to switch into?", "field": "target_domain",
+      "options": [
+        { "value": "Software Engineering", "label": "💻 Software Engineering" },
+        { "value": "Data Science / AI", "label": "🤖 Data Science / AI" },
+        { "value": "Product Management", "label": "📦 Product Management" },
+        { "value": "UX / Design", "label": "🎨 UX / Design" },
+        { "value": "DevOps / Cloud", "label": "☁️ DevOps / Cloud" },
+        { "value": "Other", "label": "🔍 Other" }
+      ],
+      "next_question": "S2_SWITCH_Q2"
+    },
+    "S2_SWITCH_Q2": {
+      "id": "S2_SWITCH_Q2", "section": "S2_SWITCH", "type": "text",
+      "text": "What motivated you to switch to this domain? Tell me about your journey so far.",
+      "field": "switch_motivation", "evaluate": true, "next_question": "S2_SWITCH_Q3"
+    },
+    "S2_SWITCH_Q3": {
+      "id": "S2_SWITCH_Q3", "section": "S2_SWITCH", "type": "text",
+      "text": "What transferable skills from your current role do you think will help you in the new domain?",
+      "field": "transferable_skills", "skill_category": "transferable", "evaluate": true,
+      "next_question": "S2_SWITCH_Q4"
+    },
+    "S2_SWITCH_Q4": {
+      "id": "S2_SWITCH_Q4", "section": "S2_SWITCH", "type": "slider",
+      "text": "How much have you already explored or self-studied the target domain? (0 = nothing, 10 = extensively)",
+      "field": "domain_exploration", "min": 0, "max": 10, "next_question": "S3Q1"
+    },
+
+    "S2_EXCEL_Q1": {
+      "id": "S2_EXCEL_Q1", "section": "S2_EXCEL", "type": "text",
+      "text": "What are your top 3 technical skills in your current domain?",
+      "field": "technical_skills", "next_question": "S2_EXCEL_Q2"
+    },
+    "S2_EXCEL_Q2": {
+      "id": "S2_EXCEL_Q2", "section": "S2_EXCEL", "type": "text",
+      "text": "Describe a recent project or problem you solved. Be specific about your approach and the impact.",
+      "field": "project_description", "skill_category": "technical", "evaluate": true,
+      "next_question": "S2_EXCEL_Q3"
+    },
+    "S2_EXCEL_Q3": {
+      "id": "S2_EXCEL_Q3", "section": "S2_EXCEL", "type": "slider",
+      "text": "How confident are you in your problem-solving abilities within your domain?",
+      "field": "problem_solving_confidence", "min": 1, "max": 10, "next_question": "S2_EXCEL_Q4"
+    },
+    "S2_EXCEL_Q4": {
+      "id": "S2_EXCEL_Q4", "section": "S2_EXCEL", "type": "text",
+      "text": "Tell me about a time you had to learn something completely new in your field. How did you approach it?",
+      "field": "learning_experience", "skill_category": "soft_skills", "evaluate": true,
+      "next_question": "S3Q1"
+    },
+
+    "S3Q1": {
+      "id": "S3Q1", "section": "S3", "type": "text",
+      "text": "Where do you see yourself in 5 years? Describe your ideal career position.",
+      "field": "five_year_vision", "next_question": "S3Q2"
+    },
+    "S3Q2": {
+      "id": "S3Q2", "section": "S3", "type": "card_select",
+      "text": "What matters most to you in your career?", "field": "career_priority",
+      "options": [
+        { "value": "salary", "label": "💰 High Salary" },
+        { "value": "balance", "label": "⚖️ Work-Life Balance" },
+        { "value": "impact", "label": "🌍 Impact & Purpose" },
+        { "value": "growth", "label": "📈 Growth & Learning" }
+      ],
+      "next_question": "S3Q3"
+    },
+    "S3Q3": {
+      "id": "S3Q3", "section": "S3", "type": "card_select",
+      "text": "Which work environment suits you best?", "field": "work_environment",
+      "options": [
+        { "value": "remote", "label": "🏠 Remote" },
+        { "value": "office", "label": "🏢 Office" },
+        { "value": "hybrid", "label": "🔄 Hybrid" },
+        { "value": "flexible", "label": "✨ Flexible" }
+      ],
+      "next_question": "COMPLETE"
+    },
+
+    "COMPLETE": {
+      "id": "COMPLETE", "type": "completion",
+      "text": "🎉 Amazing! I've gathered everything I need to build your personalized career roadmap."
+    }
+  }
+}
