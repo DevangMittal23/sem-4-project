@@ -13,6 +13,11 @@ FIELD_LABELS = {
     "current_status": "current status — one of: Student, Employed, Freelance, Unemployed, Career Break",
     "availability": "weekly availability — one of: less than 5 hours, 5 to 10 hours, 10 to 20 hours, more than 20 hours per week",
     "goal": "primary career goal — one of: Switch Domain, Excel in Current Domain, Get a Job, Promotion, Side Income",
+    # Extended goal-detail fields
+    "target_role": "specific target role or job title they want to reach",
+    "risk_tolerance": "risk tolerance — one of: Low (prefer stability), Medium (balanced), High (embrace challenges)",
+    "learning_style": "preferred learning style — one of: visual, hands-on, reading, mixed",
+    "side_income_type": "type of side income they want — e.g. freelancing, content creation, consulting, teaching",
 }
 
 FIELD_CODES = {
@@ -21,6 +26,8 @@ FIELD_CODES = {
     "current_status": {"student": "student", "employed": "employed", "freelance": "freelance", "unemployed": "unemployed", "career break": "career_break"},
     "availability": {"less than 5": "lt5", "< 5": "lt5", "5 to 10": "5_10", "5-10": "5_10", "10 to 20": "10_20", "10-20": "10_20", "more than 20": "gt20", "20+": "gt20"},
     "goal": {"switch": "switch_domain", "excel": "excel_current", "get a job": "get_job", "promotion": "promotion", "side income": "side_income"},
+    "risk_tolerance": {"low": "low", "stability": "low", "medium": "medium", "balanced": "medium", "high": "high", "challenge": "high"},
+    "learning_style": {"visual": "visual", "hands-on": "hands-on", "hands on": "hands-on", "reading": "reading", "mixed": "mixed"},
 }
 
 
@@ -73,6 +80,7 @@ def profile_completion_chat(missing_fields: list[str], conversation_history: lis
     """
     Targeted chatbot that asks only about missing profile fields one at a time.
     Extracts and saves values after each user reply.
+    Extended to also collect goal-detail fields (target_role, risk_tolerance, learning_style, side_income_type).
     """
     if not missing_fields:
         return {"reply": "Your profile is already complete!", "is_complete": True, "collected": {}, "history": conversation_history}
@@ -84,12 +92,10 @@ def profile_completion_chat(missing_fields: list[str], conversation_history: lis
     if user_message:
         updated_history.append({"role": "user", "content": user_message})
         # Try to extract the value for the field we just asked about
-        # The field we were asking about is the first missing field
         target_field = missing_fields[0]
         extracted = _extract_field_value(target_field, updated_history)
         if extracted:
             collected[target_field] = extracted
-            # Remove from missing since we got it
             remaining = missing_fields[1:]
         else:
             remaining = missing_fields
@@ -98,7 +104,17 @@ def profile_completion_chat(missing_fields: list[str], conversation_history: lis
 
     # If all fields collected, mark complete
     if not remaining:
-        completion_reply = "Perfect! I have everything I need. Your profile is now complete! 🎉"
+        # Check if these were the extended fields (goal-detail phase)
+        extended_fields = ["target_role", "risk_tolerance", "learning_style", "side_income_type"]
+        is_extended_phase = all(f in extended_fields for f in missing_fields)
+        if is_extended_phase:
+            completion_reply = (
+                "Excellent! I now have a complete picture of your career goals and learning preferences. "
+                "Your personalized roadmap will be tailored to your risk tolerance and learning style. "
+                "Head to the Roadmap page to generate your AI-powered career plan! 🚀"
+            )
+        else:
+            completion_reply = "Perfect! I have everything I need. Your profile is now complete! 🎉"
         updated_history.append({"role": "assistant", "content": completion_reply})
         return {
             "reply": completion_reply,
@@ -109,9 +125,22 @@ def profile_completion_chat(missing_fields: list[str], conversation_history: lis
 
     # Ask about the next missing field
     next_field = remaining[0]
+
+    # Context-aware prompts for goal-detail fields
+    goal_detail_context = ""
+    if next_field == "target_role":
+        goal_detail_context = "The user has already told us their primary goal. Now ask specifically what role or position they want to reach."
+    elif next_field == "risk_tolerance":
+        goal_detail_context = "Ask about their comfort with career risk — are they risk-averse (prefer stability), balanced, or willing to take bold leaps?"
+    elif next_field == "learning_style":
+        goal_detail_context = "Ask how they prefer to learn: watching videos/visual content, hands-on projects, reading docs/books, or a mix."
+    elif next_field == "side_income_type":
+        goal_detail_context = "Ask what type of side income they're interested in — freelancing, content creation, consulting, teaching, etc."
+
     system_prompt = f"""You are a friendly AI career assistant helping a user complete their profile.
 
 You need to ask about: {FIELD_LABELS.get(next_field, next_field)}
+{f'Context: {goal_detail_context}' if goal_detail_context else ''}
 
 Rules:
 - Ask ONE natural, conversational question about this specific field
@@ -121,7 +150,6 @@ Rules:
 - Do NOT explain what you're doing, just ask the question"""
 
     messages = [{"role": "system", "content": system_prompt}]
-    # Add last 4 exchanges for context
     messages.extend(updated_history[-4:])
 
     try:

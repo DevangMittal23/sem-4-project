@@ -88,6 +88,8 @@ export interface ApiProfile {
   thinking_style: string;
   interests: string[];
   skills: string[];
+  skill_levels: Record<string, string>;
+  certifications: string[];
   preferred_domain: string;
   experience_level: string;
   experience_years: string;
@@ -95,6 +97,11 @@ export interface ApiProfile {
   current_status: string;
   availability: string;
   goal: string;
+  target_role: string;
+  risk_tolerance: string;
+  learning_style: string;
+  side_income_type: string;
+  target_salary: string;
   linkedin: string;
   bio: string;
   profile_completion: number;
@@ -192,38 +199,100 @@ export async function apiPredictCareer(): Promise<CareerPathResult[]> {
   return apiFetch<CareerPathResult[]>("/ai/career/", { method: "POST", body: JSON.stringify({}) });
 }
 
+// ── AI — Skill Gap + Roadmap + Tasks ────────────────────────────────────────
+
+export interface SkillGapData {
+  id: number;
+  current_skills: string[];
+  required_skills: string[];
+  gap_skills: { skill: string; priority: string; estimated_weeks: number; reason: string }[];
+  market_insights: string[];
+  job_market_data: { avg_salary_current: string; avg_salary_target: string; demand_level: string; top_hiring_companies: string[]; growth_rate: string };
+  recommendations: string[];
+  career_options: { title: string; fit_score: number; time_to_achieve: string; salary_range: string; required_gap_skills: string[]; reason: string; difficulty: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export async function apiGetSkillGap(): Promise<SkillGapData> {
+  return apiFetch<SkillGapData>("/ai/skill-gap/");
+}
+
+export async function apiRunSkillGap(): Promise<SkillGapData> {
+  return apiFetch<SkillGapData>("/ai/skill-gap/", { method: "POST", body: JSON.stringify({}) });
+}
+
 export interface RoadmapPhase {
   phase: string;
+  phase_number: number;
   weeks: string;
+  week_start: number;
+  week_end: number;
   goal: string;
-  topics: string[];
-  resources: string[];
+  focus_skills: string[];
   milestone: string;
+  resources: string[];
+  weekly_plans: {
+    week: number;
+    theme: string;
+    goals: string[];
+    tasks: { title: string; description: string; tag: string; difficulty: string; estimated_time: string; resource_url: string; order: number }[];
+  }[];
 }
 
-export interface RoadmapResult {
-  title: string;
+export interface RoadmapData {
+  id: number;
+  career_title: string;
   total_weeks: number;
+  current_week: number;
   phases: RoadmapPhase[];
+  is_active: boolean;
+  weekly_plans: WeeklyPlanData[];
+  created_at: string;
+  updated_at: string;
 }
 
-export async function apiGenerateRoadmap(career_title: string): Promise<RoadmapResult> {
-  return apiFetch<RoadmapResult>("/ai/roadmap/", { method: "POST", body: JSON.stringify({ career_title }) });
+export interface WeeklyPlanData {
+  id: number;
+  week_number: number;
+  theme: string;
+  goals: string[];
+  is_current: boolean;
+  is_completed: boolean;
+  completion_pct: number;
+  ai_feedback: string;
+  tasks: TaskResult[];
+  created_at: string;
+}
+
+export async function apiGetRoadmap(): Promise<RoadmapData> {
+  return apiFetch<RoadmapData>("/ai/roadmap/");
+}
+
+export async function apiGenerateRoadmap(career_title: string): Promise<RoadmapData> {
+  return apiFetch<RoadmapData>("/ai/roadmap/", { method: "POST", body: JSON.stringify({ career_title }) });
+}
+
+export async function apiCompleteWeek(): Promise<{ message: string; adaptation_note?: string; week?: WeeklyPlanData; roadmap_complete?: boolean }> {
+  return apiFetch("/ai/weekly-plan/", { method: "POST", body: JSON.stringify({}) });
+}
+
+export async function apiGetWeeklyPlans(week?: number): Promise<WeeklyPlanData[]> {
+  const q = week ? `?week=${week}` : "";
+  return apiFetch<WeeklyPlanData[]>(`/ai/weekly-plan/${q}`);
 }
 
 export interface TaskResult {
   id: number;
   title: string;
   description: string;
+  resource_url: string;
   difficulty: string;
   estimated_time: string;
   tag: string;
   status: string;
   week_number: number;
-}
-
-export async function apiGenerateTasks(week_number: number, roadmap: RoadmapResult | null): Promise<TaskResult[]> {
-  return apiFetch<TaskResult[]>("/ai/tasks/", { method: "POST", body: JSON.stringify({ week_number, roadmap }) });
+  order: number;
 }
 
 export interface AnalysisResult {
@@ -234,19 +303,20 @@ export interface AnalysisResult {
   insights: string[];
   next_week_recommendation: string;
   difficulty_adjustment: string;
+  weekly_summary: string;
+}
+
+export async function apiGetTasks(week?: number): Promise<TaskResult[]> {
+  const q = week ? `?week=${week}` : "";
+  return apiFetch<TaskResult[]>(`/ai/tasks/${q}`);
+}
+
+export async function apiUpdateTask(id: number, data: {
+  status?: string; time_taken?: number; difficulty_feedback?: string; notes?: string;
+}): Promise<TaskResult> {
+  return apiFetch<TaskResult>(`/ai/tasks/${id}/`, { method: "PATCH", body: JSON.stringify(data) });
 }
 
 export async function apiAnalyzePerformance(): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>("/ai/analysis/", { method: "POST", body: JSON.stringify({}) });
-}
-
-// ── Tasks ─────────────────────────────────────────────────────────────────────
-
-export async function apiGetTasks(week?: number): Promise<TaskResult[]> {
-  const q = week ? `?week=${week}` : "";
-  return apiFetch<TaskResult[]>(`/tasks/${q}`);
-}
-
-export async function apiUpdateTask(id: number, data: Partial<TaskResult>): Promise<TaskResult> {
-  return apiFetch<TaskResult>(`/tasks/${id}/`, { method: "PATCH", body: JSON.stringify(data) });
 }

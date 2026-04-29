@@ -47,8 +47,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = (
             "id", "email", "username",
             "name", "profession", "thinking_style", "interests", "skills",
+            "skill_levels", "certifications",
             "preferred_domain", "experience_level", "experience_years",
             "education", "current_status", "availability", "goal",
+            "target_role", "risk_tolerance", "learning_style",
+            "side_income_type", "target_salary",
             "linkedin", "bio",
             "profile_completion", "is_assessment_completed",
             "created_at", "updated_at",

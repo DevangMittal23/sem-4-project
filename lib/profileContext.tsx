@@ -9,20 +9,31 @@ export interface ProfileData {
   goal: string;
   target_domain: string;
   skills: string[];
+  skill_levels: Record<string, string>;
+  certifications: string[];
   education: string;
   status: string;
   availability: string;
   career_goal: string;
   linkedin: string;
   bio: string;
+  thinking_style: string;
+  interests: string[];
+  target_role: string;
+  risk_tolerance: string;
+  learning_style: string;
+  side_income_type: string;
+  experience_years: string;
   // authoritative completion from backend — overrides local calc when set
   backend_completion: number | null;
 }
 
 export const EMPTY_PROFILE: ProfileData = {
   name: "", profession: "", experience: "", level: "", goal: "",
-  target_domain: "", skills: [],
+  target_domain: "", skills: [], skill_levels: {}, certifications: [],
   education: "", status: "", availability: "", career_goal: "", linkedin: "", bio: "",
+  thinking_style: "", interests: [], target_role: "", risk_tolerance: "",
+  learning_style: "", side_income_type: "", experience_years: "",
   backend_completion: null,
 };
 
@@ -53,8 +64,16 @@ function load(): ProfileData | null {
     const raw = localStorage.getItem("acm_profile");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ProfileData;
-    // ensure new field exists on old saved data
     if (parsed.backend_completion === undefined) parsed.backend_completion = null;
+    if (!parsed.skill_levels) parsed.skill_levels = {};
+    if (!parsed.certifications) parsed.certifications = [];
+    if (!parsed.interests) parsed.interests = [];
+    if (parsed.thinking_style === undefined) parsed.thinking_style = "";
+    if (parsed.target_role === undefined) parsed.target_role = "";
+    if (parsed.risk_tolerance === undefined) parsed.risk_tolerance = "";
+    if (parsed.learning_style === undefined) parsed.learning_style = "";
+    if (parsed.side_income_type === undefined) parsed.side_income_type = "";
+    if (parsed.experience_years === undefined) parsed.experience_years = "";
     return parsed;
   } catch { return null; }
 }

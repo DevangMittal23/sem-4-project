@@ -31,9 +31,18 @@ export default function DashboardPage() {
     apiGetDashboard()
       .then((d) => {
         setDashData(d);
-        // Sync backend profile completion into context
+        // Sync backend profile completion + rich fields into context
         if (d.profile_completion !== undefined) {
-          updateProfile({ backend_completion: d.profile_completion });
+          updateProfile({
+            backend_completion: d.profile_completion,
+            profession: d.profile?.profession || "",
+            level: d.profile?.experience_level || "",
+            goal: d.profile?.goal || "",
+            skills: d.profile?.skills || [],
+            target_role: d.profile?.target_role || "",
+            risk_tolerance: d.profile?.risk_tolerance || "",
+            learning_style: d.profile?.learning_style || "",
+          });
         }
       })
       .catch(() => {})
