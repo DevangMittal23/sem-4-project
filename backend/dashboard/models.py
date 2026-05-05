@@ -1,16 +1,23 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class SkillGapAnalysis(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="skill_gap")
     current_skills = models.JSONField(default=list)
     required_skills = models.JSONField(default=list)
-    gap_skills = models.JSONField(default=list)          # skills to learn
-    market_insights = models.JSONField(default=list)     # from Google search
-    job_market_data = models.JSONField(default=dict)     # salary, demand, trends
+    gap_skills = models.JSONField(default=list)
+    market_insights = models.JSONField(default=list)
+    job_market_data = models.JSONField(default=dict)
     recommendations = models.JSONField(default=list)
-    career_options = models.JSONField(default=list)      # [{title, fit_score, reason}]
+    career_options = models.JSONField(default=list)
+    # Raw Adzuna data stored for full report display
+    adzuna_jobs = models.JSONField(default=list)          # raw job listings
+    adzuna_market_skills = models.JSONField(default=list) # [{skill, demand}] sorted
+    adzuna_salary = models.JSONField(default=dict)        # {avg_min, avg_max, formatted}
+    adzuna_role_searched = models.CharField(max_length=200, blank=True)
+    adzuna_jobs_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -23,7 +30,7 @@ class Roadmap(models.Model):
     career_title = models.CharField(max_length=200)
     total_weeks = models.IntegerField(default=12)
     current_week = models.IntegerField(default=1)
-    phases = models.JSONField(default=list)              # full phase structure
+    phases = models.JSONField(default=list)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -67,6 +74,8 @@ class Task(models.Model):
     estimated_time = models.CharField(max_length=30, blank=True)
     week_number = models.IntegerField(default=1)
     order = models.IntegerField(default=0)
+    target_skill = models.CharField(max_length=200, blank=True)
+    why_assigned = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -89,3 +98,18 @@ class TaskLog(models.Model):
 
     def __str__(self):
         return f"Log: {self.task.title[:40]}"
+
+
+class ActivityLog(models.Model):
+    """One record per day per user — tracks daily task completion for streak + calendar."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="activity_logs")
+    date = models.DateField()                          # UTC date of activity
+    tasks_completed = models.IntegerField(default=0)  # how many tasks done that day
+    xp_earned = models.IntegerField(default=0)        # XP points earned that day
+
+    class Meta:
+        unique_together = ("user", "date")
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"Activity({self.user.email} | {self.date} | {self.tasks_completed} tasks)"

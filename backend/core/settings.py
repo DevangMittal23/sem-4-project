@@ -110,9 +110,11 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # ── AI Keys ───────────────────────────────────────────────────────────────────
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
+ADZUNA_APP_ID  = os.environ.get("ADZUNA_APP_ID",  "e8f35901")
+ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY", "c0f126251d3d80b02f3a1a8b2035b1c8")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {

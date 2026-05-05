@@ -6,7 +6,7 @@ import CompletionModal from "@/components/CompletionModal";
 import { useProfile } from "@/lib/profileContext";
 import {
   apiGetSkillGap, apiRunSkillGap, apiGetRoadmap, apiGenerateRoadmap,
-  SkillGapData, RoadmapData,
+  apiGetUserStatus, SkillGapData, RoadmapData,
 } from "@/lib/api";
 import {
   Sparkles, RefreshCw, Lock, ChevronRight, CheckCircle2, Circle,

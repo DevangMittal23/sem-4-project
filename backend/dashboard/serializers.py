@@ -6,7 +6,8 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ("id", "title", "description", "resource_url", "status", "difficulty",
-                  "tag", "estimated_time", "week_number", "order", "created_at", "updated_at")
+                  "tag", "estimated_time", "week_number", "order",
+                  "target_skill", "why_assigned", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
 
@@ -40,8 +41,14 @@ class RoadmapSerializer(serializers.ModelSerializer):
 class SkillGapSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillGapAnalysis
-        fields = ("id", "current_skills", "required_skills", "gap_skills", "market_insights",
-                  "job_market_data", "recommendations", "career_options", "created_at", "updated_at")
+        fields = (
+            "id", "current_skills", "required_skills", "gap_skills", "market_insights",
+            "job_market_data", "recommendations", "career_options",
+            # Raw Adzuna report fields
+            "adzuna_jobs", "adzuna_market_skills", "adzuna_salary",
+            "adzuna_role_searched", "adzuna_jobs_count",
+            "created_at", "updated_at",
+        )
         read_only_fields = ("id", "created_at", "updated_at")
 
 

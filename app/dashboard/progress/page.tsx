@@ -4,19 +4,97 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import CompletionModal from "@/components/CompletionModal";
 import { useProfile } from "@/lib/profileContext";
-import { apiGetRoadmap, apiGetWeeklyPlans, apiAnalyzePerformance, RoadmapData, WeeklyPlanData, AnalysisResult } from "@/lib/api";
-import { CheckCircle2, Circle, Lock, Flame, Zap, Trophy, TrendingUp, Sparkles, RefreshCw, BarChart2 } from "lucide-react";
+import {
+  apiGetRoadmap, apiGetWeeklyPlans, apiAnalyzePerformance,
+  apiGetDashboardStats, apiGetActivity,
+  RoadmapData, WeeklyPlanData, AnalysisResult, DashboardStats, ActivityData,
+} from "@/lib/api";
+import {
+  CheckCircle2, Circle, Lock, Flame, Zap, Trophy, TrendingUp,
+  Sparkles, RefreshCw, BarChart2,
+} from "lucide-react";
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function SkeletonBlock({ h = "h-4", w = "w-full" }: { h?: string; w?: string }) {
   return <div className={`${h} ${w} bg-white/8 rounded-lg animate-pulse`} />;
+}
+
+// ── GitHub-style activity calendar ───────────────────────────────────────────
+function ActivityCalendar({ data }: { data: ActivityData }) {
+  const { grid, streak_days, total_active_days } = data;
+
+  // Group into weeks (rows of 7)
+  const weeks: typeof grid[] = [];
+  for (let i = 0; i < grid.length; i += 7) {
+    weeks.push(grid.slice(i, i + 7));
+  }
+
+  const getColor = (day: typeof grid[0]) => {
+    if (day.is_future) return "bg-white/4 border-white/4";
+    if (day.tasks_completed === 0) return "bg-white/8 border-white/8";
+    if (day.tasks_completed === 1) return "bg-purple-500/40 border-purple-500/30";
+    if (day.tasks_completed <= 3) return "bg-purple-500/65 border-purple-500/50";
+    return "bg-purple-500 border-purple-400/60";
+  };
+
+  const getTooltip = (day: typeof grid[0]) => {
+    if (day.is_future) return "Upcoming";
+    if (day.tasks_completed === 0) return `${day.date} — No activity`;
+    return `${day.date} — ${day.tasks_completed} task${day.tasks_completed !== 1 ? "s" : ""} · ${day.xp_earned} XP`;
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-white/40 uppercase tracking-wider font-medium">
+          Activity — Last 5 Weeks
+        </p>
+        <div className="flex items-center gap-3 text-[10px] text-white/30">
+          <span>{total_active_days} active days</span>
+          <span className={streak_days > 0 ? "text-orange-400 font-medium" : ""}>
+            {streak_days > 0 ? `🔥 ${streak_days} day streak` : "No streak yet"}
+          </span>
+        </div>
+      </div>
+
+      {/* Day labels */}
+      <div className="flex gap-1.5 mb-1.5 ml-0">
+        {DAY_LABELS.map((d) => (
+          <div key={d} className="w-8 text-center text-[9px] text-white/20">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid — each row = one week */}
+      <div className="flex flex-col gap-1.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="flex gap-1.5">
+            {week.map((day, di) => (
+              <div key={di} title={getTooltip(day)}
+                className={`w-8 h-8 rounded-md border transition-all cursor-default ${getColor(day)}`} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-3 text-[10px] text-white/25">
+        <span>Less</span>
+        {["bg-white/8", "bg-purple-500/40", "bg-purple-500/65", "bg-purple-500"].map((c, i) => (
+          <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
+        ))}
+        <span>More</span>
+      </div>
+    </div>
+  );
 }
 
 export default function ProgressPage() {
   const { isGated, completion } = useProfile();
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
   const [plans, setPlans] = useState<WeeklyPlanData[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
@@ -26,37 +104,25 @@ export default function ProgressPage() {
     Promise.all([
       apiGetRoadmap().then(setRoadmap).catch(() => {}),
       apiGetWeeklyPlans().then(setPlans).catch(() => {}),
+      apiGetDashboardStats().then(setStats).catch(() => {}),
+      apiGetActivity(5).then(setActivity).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [isGated]);
 
   const runAnalysis = async () => {
     setLoadingAnalysis(true);
-    try {
-      const result = await apiAnalyzePerformance();
-      setAnalysis(result);
-    } catch {}
+    try { setAnalysis(await apiAnalyzePerformance()); } catch {}
     setLoadingAnalysis(false);
   };
 
-  // Compute stats from real data
-  const totalTasks = plans.reduce((s, p) => s + p.tasks.length, 0);
-  const doneTasks = plans.reduce((s, p) => s + p.tasks.filter((t) => t.status === "done").length, 0);
-  const completedWeeks = plans.filter((p) => p.is_completed).length;
-  const overallPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const currentWeek = roadmap?.current_week ?? 1;
-  const totalWeeks = roadmap?.total_weeks ?? 12;
-
-  // Build activity grid (last 5 weeks)
-  const activityGrid = Array.from({ length: 5 }, (_, wi) => {
-    const weekNum = Math.max(1, currentWeek - 4 + wi);
-    const plan = plans.find((p) => p.week_number === weekNum);
-    return Array.from({ length: 7 }, (_, di) => {
-      if (!plan) return "future";
-      if (plan.is_completed) return di < 5 ? "done" : "done";
-      if (plan.is_current) return di < Math.floor(plan.completion_pct / 15) ? "done" : "future";
-      return "future";
-    });
-  });
+  const totalTasks = stats?.tasks_total ?? 0;
+  const doneTasks = stats?.tasks_done ?? 0;
+  const completedWeeks = stats?.completed_weeks ?? 0;
+  const overallPct = stats?.roadmap_pct ?? 0;
+  const currentWeek = stats?.current_week ?? 1;
+  const totalWeeks = stats?.total_weeks ?? 12;
+  const streak = stats?.streak_days ?? 0;
+  const totalXp = stats?.total_xp ?? 0;
 
   return (
     <div className="flex min-h-screen bg-[#050508]">
@@ -81,7 +147,7 @@ export default function ProgressPage() {
             </motion.div>
           ) : loading ? (
             <div className="flex flex-col gap-4">
-              {[1, 2, 3].map((i) => (
+              {[1,2,3].map((i) => (
                 <div key={i} className="glass glow-border rounded-2xl p-5 flex flex-col gap-3">
                   <SkeletonBlock h="h-3" w="w-1/4" />
                   <SkeletonBlock h="h-8" w="w-1/2" />
@@ -96,8 +162,8 @@ export default function ProgressPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { icon: Trophy, label: "Tasks Done", value: `${doneTasks}/${totalTasks}`, color: "text-amber-400" },
-                  { icon: Flame, label: "Weeks Done", value: `${completedWeeks}`, color: "text-orange-400" },
-                  { icon: Zap, label: "Current Week", value: `${currentWeek}/${totalWeeks}`, color: "text-blue-400" },
+                  { icon: Flame, label: "Day Streak", value: `${streak}`, color: streak >= 3 ? "text-orange-400" : "text-white/40" },
+                  { icon: Zap, label: "Total XP", value: `${totalXp}`, color: "text-blue-400" },
                   { icon: TrendingUp, label: "Profile", value: `${completion}%`, color: completion >= 80 ? "text-green-400" : "text-purple-400" },
                 ].map(({ icon: Icon, label, value, color }, i) => (
                   <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -109,7 +175,7 @@ export default function ProgressPage() {
                 ))}
               </div>
 
-              {/* Overall progress */}
+              {/* Roadmap progress */}
               {roadmap && (
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                   className="glass glow-border rounded-2xl p-5">
@@ -125,7 +191,9 @@ export default function ProgressPage() {
                       transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
                       className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-full" />
                   </div>
-                  <p className="text-xs text-white/25 mt-2">Week {currentWeek} of {totalWeeks} · {doneTasks} tasks completed</p>
+                  <p className="text-xs text-white/25 mt-2">
+                    Week {currentWeek} of {totalWeeks} · {doneTasks} tasks · {completedWeeks} weeks completed
+                  </p>
                 </motion.div>
               )}
 
@@ -134,20 +202,20 @@ export default function ProgressPage() {
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                   className="glass glow-border rounded-2xl p-5">
                   <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4">Weekly History</p>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     {plans.slice().reverse().map((plan) => (
                       <div key={plan.id} className={`flex items-center gap-3 p-3 rounded-xl border
                         ${plan.is_completed ? "bg-green-500/5 border-green-500/15"
                           : plan.is_current ? "bg-purple-500/5 border-purple-500/20"
                           : "bg-white/2 border-white/6"}`}>
                         {plan.is_completed
-                          ? <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+                          ? <CheckCircle2 size={15} className="text-green-400 shrink-0" />
                           : plan.is_current
-                          ? <div className="w-4 h-4 rounded-full border-2 border-purple-400 border-t-transparent animate-spin shrink-0" />
-                          : <Circle size={16} className="text-white/15 shrink-0" />}
+                          ? <div className="w-3.5 h-3.5 rounded-full border-2 border-purple-400 border-t-transparent animate-spin shrink-0" />
+                          : <Circle size={15} className="text-white/15 shrink-0" />}
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${plan.is_completed ? "text-white/60" : plan.is_current ? "text-white" : "text-white/35"}`}>
-                            Week {plan.week_number} — {plan.theme || `Week ${plan.week_number}`}
+                          <p className={`text-sm ${plan.is_completed ? "text-white/55" : plan.is_current ? "text-white" : "text-white/30"}`}>
+                            Week {plan.week_number}{plan.theme ? ` — ${plan.theme}` : ""}
                           </p>
                           {plan.is_current && (
                             <div className="mt-1.5 h-1 bg-white/5 rounded-full overflow-hidden">
@@ -166,30 +234,17 @@ export default function ProgressPage() {
                 </motion.div>
               )}
 
-              {/* Activity calendar */}
+              {/* GitHub-style activity calendar */}
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 className="glass glow-border rounded-2xl p-5">
-                <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4">Activity — Last 5 Weeks</p>
-                <div className="flex gap-1.5 mb-2">
-                  {DAY_LABELS.map((d, i) => (
-                    <div key={i} className="w-7 text-center text-[10px] text-white/25">{d}</div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {activityGrid.map((week, wi) => (
-                    <div key={wi} className="flex gap-1.5">
-                      {week.map((state, di) => (
-                        <div key={di} className={`w-7 h-7 rounded-md transition-all
-                          ${state === "done" ? "bg-purple-500/70 border border-purple-400/40"
-                            : "bg-white/3 border border-white/3"}`} />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3 mt-3 text-[10px] text-white/30">
-                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-purple-500/70" /> Active</div>
-                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-white/3" /> Upcoming</div>
-                </div>
+                {activity ? (
+                  <ActivityCalendar data={activity} />
+                ) : (
+                  <div>
+                    <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4">Activity — Last 5 Weeks</p>
+                    <p className="text-sm text-white/25 text-center py-4">Complete tasks to see your activity here.</p>
+                  </div>
+                )}
               </motion.div>
 
               {/* AI Performance Analysis */}
@@ -209,7 +264,6 @@ export default function ProgressPage() {
 
                 {analysis ? (
                   <div className="flex flex-col gap-4">
-                    {/* Score */}
                     <div className="flex items-center gap-4">
                       <div className="text-center">
                         <p className="text-3xl font-bold gradient-text">{analysis.overall_score}</p>
@@ -226,8 +280,6 @@ export default function ProgressPage() {
                         </p>
                       </div>
                     </div>
-
-                    {/* Strengths & improvements */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[10px] text-green-400 uppercase tracking-wider mb-2">Strengths</p>
@@ -246,8 +298,6 @@ export default function ProgressPage() {
                         ))}
                       </div>
                     </div>
-
-                    {/* Insights */}
                     <div className="flex flex-col gap-2">
                       {analysis.insights.map((insight, i) => (
                         <div key={i} className="flex gap-2 p-2.5 rounded-xl bg-purple-600/8 border border-purple-500/15">
@@ -256,8 +306,6 @@ export default function ProgressPage() {
                         </div>
                       ))}
                     </div>
-
-                    {/* Next week recommendation */}
                     <div className="p-3 rounded-xl bg-blue-600/8 border border-blue-500/15">
                       <p className="text-[10px] text-blue-400 uppercase tracking-wider mb-1">Next Week</p>
                       <p className="text-xs text-white/65">{analysis.next_week_recommendation}</p>

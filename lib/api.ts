@@ -207,9 +207,29 @@ export interface SkillGapData {
   required_skills: string[];
   gap_skills: { skill: string; priority: string; estimated_weeks: number; reason: string }[];
   market_insights: string[];
-  job_market_data: { avg_salary_current: string; avg_salary_target: string; demand_level: string; top_hiring_companies: string[]; growth_rate: string };
+  job_market_data: {
+    avg_salary_current: string;
+    avg_salary_target: string;
+    demand_level: string;
+    top_hiring_companies: string[];
+    growth_rate: string;
+  };
   recommendations: string[];
-  career_options: { title: string; fit_score: number; time_to_achieve: string; salary_range: string; required_gap_skills: string[]; reason: string; difficulty: string }[];
+  career_options: {
+    title: string; fit_score: number; time_to_achieve: string;
+    salary_range: string; required_gap_skills: string[];
+    reason: string; difficulty: string;
+  }[];
+  // Raw Adzuna data
+  adzuna_jobs: {
+    title: string; company: string; location: string;
+    description: string; salary_min: number | null;
+    salary_max: number | null; redirect_url: string;
+  }[];
+  adzuna_market_skills: { skill: string; demand: number }[];
+  adzuna_salary: { avg_min: number; avg_max: number; formatted: string; sample_size: number };
+  adzuna_role_searched: string;
+  adzuna_jobs_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -220,6 +240,21 @@ export async function apiGetSkillGap(): Promise<SkillGapData> {
 
 export async function apiRunSkillGap(): Promise<SkillGapData> {
   return apiFetch<SkillGapData>("/ai/skill-gap/", { method: "POST", body: JSON.stringify({}) });
+}
+
+export interface MarketSkillGapData {
+  role: string;
+  jobs_analysed: number;
+  market_skills: { skill: string; demand: number }[];
+  user_skills: string[];
+  missing_skills: string[];
+  strengths: string[];
+  salary_summary: { avg_min: number; avg_max: number; formatted: string; sample_size: number };
+}
+
+export async function apiGetMarketSkillGap(role?: string): Promise<MarketSkillGapData> {
+  const q = role ? `?role=${encodeURIComponent(role)}` : "";
+  return apiFetch<MarketSkillGapData>(`/ai/market-skill-gap/${q}`);
 }
 
 export interface RoadmapPhase {
@@ -293,6 +328,23 @@ export interface TaskResult {
   status: string;
   week_number: number;
   order: number;
+  target_skill: string;
+  why_assigned: string;
+}
+
+export interface GenerateTasksResponse {
+  week: number;
+  theme: string;
+  goals: string[];
+  tasks: TaskResult[];
+  plan: WeeklyPlanData;
+}
+
+export async function apiGenerateTasks(week_number = 1): Promise<GenerateTasksResponse> {
+  return apiFetch<GenerateTasksResponse>("/ai/tasks/generate/", {
+    method: "POST",
+    body: JSON.stringify({ week_number }),
+  });
 }
 
 export interface AnalysisResult {
@@ -319,4 +371,45 @@ export async function apiUpdateTask(id: number, data: {
 
 export async function apiAnalyzePerformance(): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>("/ai/analysis/", { method: "POST", body: JSON.stringify({}) });
+}
+
+// ── Dashboard Stats (live) ────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  streak_days: number;
+  ai_score: number;
+  total_xp: number;
+  tasks_done: number;
+  tasks_total: number;
+  week_tasks_done: number;
+  week_tasks_total: number;
+  completed_weeks: number;
+  current_week: number;
+  total_weeks: number;
+  career_title: string | null;
+  profile_completion: number;
+  roadmap_pct: number;
+}
+
+export async function apiGetDashboardStats(): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>("/dashboard/stats/");
+}
+
+// ── Activity Log (GitHub-style calendar) ─────────────────────────────────────
+
+export interface ActivityDay {
+  date: string;
+  tasks_completed: number;
+  xp_earned: number;
+  is_future: boolean;
+}
+
+export interface ActivityData {
+  grid: ActivityDay[];
+  streak_days: number;
+  total_active_days: number;
+}
+
+export async function apiGetActivity(weeks = 5): Promise<ActivityData> {
+  return apiFetch<ActivityData>(`/dashboard/activity/?weeks=${weeks}`);
 }
