@@ -1,4 +1,4 @@
-import questionsData from "@/data/questions.json";
+import questionsData from "@/data/questions.json"; 
 
 export interface QuestionOption {
   value: string;
