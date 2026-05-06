@@ -1,7 +1,7 @@
 services:
   # ── Django Backend ──────────────────────────────────────────────────────────
   - type: web
-    name: ai-career-mentor-backend
+    name: careermentor-81iw
     runtime: python
     rootDir: backend
     buildCommand: "./build.sh"
@@ -19,7 +19,7 @@ services:
           name: ai-career-mentor-db
           property: connectionString
       - key: FRONTEND_URL
-        value: "https://ai-career-mentor.onrender.com"
+        value: "https://careermentors.onrender.com"
       - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
@@ -33,7 +33,7 @@ services:
 
   # ── Next.js Frontend ────────────────────────────────────────────────────────
   - type: web
-    name: ai-career-mentor
+    name: careermentors
     runtime: node
     rootDir: .
     buildCommand: "npm install && npm run build"
@@ -41,7 +41,7 @@ services:
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: "https://ai-career-mentor-backend.onrender.com/api"
+        value: "https://careermentor-81iw.onrender.com/api"
       - key: NODE_VERSION
         value: "20.18.0"
       - key: PORT

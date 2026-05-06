@@ -155,7 +155,7 @@ Rules:
     try:
         client = _groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.7,
             max_tokens=120,
@@ -214,7 +214,7 @@ Rules:
     try:
         client = _groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.7,
             max_tokens=300,
@@ -288,10 +288,11 @@ Fill every field you can find from the conversation. Do not leave fields empty i
     try:
         client = _groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=500,
+            response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content.strip()
 

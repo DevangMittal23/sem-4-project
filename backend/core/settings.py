@@ -114,7 +114,12 @@ _frontend_url = os.environ.get("FRONTEND_URL", "")
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://careermentors.onrender.com",
+    "https://ai-career-mentor.onrender.com",
 ] + ([_frontend_url] if _frontend_url else [])
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.onrender\.com$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # ── AI Keys ───────────────────────────────────────────────────────────────────

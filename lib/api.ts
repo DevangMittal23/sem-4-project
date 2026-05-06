@@ -1,4 +1,6 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api";
+// Resilient BASE URL: auto-append /api if the env var is set but missing the suffix
+const _rawBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/+$/, "");
+const BASE = _rawBase.endsWith("/api") ? _rawBase : `${_rawBase}/api`;
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -31,13 +33,35 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, authenticate
     const token = getAccessToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw { status: res.status, data: err };
+  const url = `${BASE}${path}`;
+  
+  // Add timeout for slow Render free-tier cold starts
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+  
+  try {
+    const res = await fetch(url, { ...options, headers, signal: controller.signal });
+    clearTimeout(timeout);
+    
+    if (!res.ok) {
+      let err: Record<string, unknown>;
+      try {
+        err = await res.json();
+      } catch {
+        // Response isn't JSON (e.g., HTML 404 page) — build a useful error
+        err = { error: `API error ${res.status}: ${res.statusText}`, url };
+      }
+      throw { status: res.status, data: err };
+    }
+    if (res.status === 204) return {} as T;
+    return res.json();
+  } catch (e: unknown) {
+    clearTimeout(timeout);
+    if (e && typeof e === "object" && "status" in e) throw e; // re-throw API errors
+    // Network / timeout error
+    const msg = e instanceof Error ? e.message : "Network error";
+    throw { status: 0, data: { error: msg.includes("aborted") ? "Request timed out. The server may be starting up — please try again." : msg } };
   }
-  if (res.status === 204) return {} as T;
-  return res.json();
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

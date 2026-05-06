@@ -230,6 +230,7 @@ class DashboardStatsView(APIView):
             "career_title": career_title,
             "profile_completion": profile.profile_completion,
             "roadmap_pct": round((done_tasks / max(total_tasks, 1)) * 100) if total_tasks > 0 else 0,
+            "roadmap_progress": round((done_tasks / max(total_tasks, 1)) * 100) if total_tasks > 0 else 0,
         })
 
 
