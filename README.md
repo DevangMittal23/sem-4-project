@@ -1,4 +1,4 @@
-# Semester 4 Assessment Platform
+# AI Career Mentor Platform
 
 This project is a full‑stack web application for managing student assessments, AI‑assisted evaluation, and performance dashboards.[page:1]  
 The frontend is built with Next.js (App Router, TypeScript), and the backend is a Django application exposed via REST‑style endpoints.[page:1][page:2]
