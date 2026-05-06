@@ -1,14 +1,42 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Loader2, User, Mail, Lock, Sparkles, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, User, Mail, Lock, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiRegister, apiLogin, apiGetProfile, saveTokens } from "@/lib/api";
+import { apiRegister, apiLogin, apiGoogleAuth, apiGetProfile, saveTokens } from "@/lib/api";
 import { useStore } from "@/lib/store";
+import { useGoogleLogin } from "@react-oauth/google";
 
 interface LoginForm  { username: string; password: string; }
 interface SignupForm { email: string; username: string; password: string; confirmPassword: string; }
+
+/* ── Toast notification ─────────────────────────────────────── */
+function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      className="fixed top-6 right-6 z-50 px-5 py-3.5 rounded-xl flex items-center gap-3 shadow-2xl backdrop-blur-xl max-w-sm"
+      style={{
+        background: type === "success"
+          ? "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.10))"
+          : "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.10))",
+        border: `1px solid ${type === "success" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+        color: type === "success" ? "#4ade80" : "#f87171",
+      }}
+    >
+      {type === "success" ? <CheckCircle size={18} /> : <span className="text-lg">⚠</span>}
+      <span className="text-sm font-medium">{message}</span>
+    </motion.div>
+  );
+}
 
 /* ── Reusable input ──────────────────────────────────────────── */
 function InputField({ label, icon: Icon, type, value, onChange, error, placeholder, rightSlot }: {
@@ -59,6 +87,94 @@ function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) 
       tabIndex={-1}>
       {show ? <EyeOff size={15} /> : <Eye size={15} />}
     </button>
+  );
+}
+
+/* ── Google Icon SVG ─────────────────────────────────────────── */
+function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+/* ── Divider ─────────────────────────────────────────────────── */
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3 my-5">
+      <div className="flex-1 h-px" style={{ background: "rgb(var(--border-strong))" }} />
+      <span className="text-xs font-medium tracking-wider uppercase" style={{ color: "rgb(var(--foreground-faint))" }}>
+        or
+      </span>
+      <div className="flex-1 h-px" style={{ background: "rgb(var(--border-strong))" }} />
+    </div>
+  );
+}
+
+/* ── Google Sign-In Button ───────────────────────────────────── */
+function GoogleSignInButton({ onSuccess, loading }: {
+  onSuccess: (token: string) => void;
+  loading: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      // useGoogleLogin with implicit flow gives access_token
+      // We need the id_token, so we use the credential flow instead
+      // Let's fetch userinfo and pass the access token
+      onSuccess(tokenResponse.access_token);
+    },
+    onError: () => {
+      // Error is handled at the parent level
+    },
+    flow: "implicit",
+  });
+
+  return (
+    <motion.button
+      type="button"
+      onClick={() => googleLogin()}
+      disabled={loading}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
+      style={{
+        background: hovered
+          ? "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))"
+          : "rgba(255,255,255,0.03)",
+        border: `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgb(var(--border-strong))"}`,
+        color: "rgb(var(--foreground))",
+        boxShadow: hovered
+          ? "0 0 20px rgba(66,133,244,0.10), 0 0 40px rgba(66,133,244,0.05)"
+          : "none",
+      }}
+    >
+      {/* Glow effect on hover */}
+      <motion.div
+        className="absolute inset-0 rounded-xl pointer-events-none"
+        animate={{
+          opacity: hovered ? 1 : 0,
+        }}
+        style={{
+          background: "radial-gradient(circle at 50% 50%, rgba(66,133,244,0.06) 0%, transparent 70%)",
+        }}
+      />
+      {loading ? (
+        <Loader2 size={18} className="animate-spin" />
+      ) : (
+        <GoogleIcon size={18} />
+      )}
+      <span className="relative z-10">
+        {loading ? "Connecting…" : "Continue with Google"}
+      </span>
+    </motion.button>
   );
 }
 
@@ -174,7 +290,9 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const { setProfile } = useStore();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const nav = (path: string) => setTimeout(() => router.push(path), 0);
 
@@ -183,6 +301,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       const res = await apiLogin(username, password);
       saveTokens(res.tokens.access, res.tokens.refresh);
+      setToast({ message: "Welcome back! Redirecting…", type: "success" });
       if (res.is_assessment_completed) {
         try { const p = await apiGetProfile(); setProfile(p); } catch { /* non-fatal */ }
         nav("/dashboard");
@@ -200,6 +319,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       const res = await apiRegister(username, email, password);
       saveTokens(res.tokens.access, res.tokens.refresh);
+      setToast({ message: "Account created! Starting assessment…", type: "success" });
       nav("/assessment");
     } catch (err: unknown) {
       const e = err as { data?: { error?: string; email?: string[]; username?: string[] } };
@@ -207,9 +327,50 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     } finally { setLoading(false); }
   };
 
+  /* ── Google auth handler ──────────────────────────────────── */
+  const handleGoogleAuth = async (accessToken: string) => {
+    setServerError("");
+    setGoogleLoading(true);
+    try {
+      // The implicit flow gives us an access_token, not an id_token.
+      // We need to exchange it for user info and pass the access_token to backend.
+      // Our backend will handle verification using the access_token.
+      const res = await apiGoogleAuth(accessToken);
+      saveTokens(res.tokens.access, res.tokens.refresh);
+
+      if (res.is_assessment_completed) {
+        setToast({ message: "Welcome back! Redirecting to dashboard…", type: "success" });
+        try { const p = await apiGetProfile(); setProfile(p); } catch { /* non-fatal */ }
+        nav("/dashboard");
+      } else {
+        setToast({
+          message: res.is_new_user
+            ? "Account created with Google! Let's start your assessment."
+            : "Welcome back! Let's complete your assessment.",
+          type: "success",
+        });
+        nav("/assessment");
+      }
+    } catch (err: unknown) {
+      const e = err as { data?: { error?: string } };
+      const msg = e?.data?.error ?? "Google authentication failed. Please try again.";
+      setServerError(msg);
+      setToast({ message: msg, type: "error" });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const isAnyLoading = loading || googleLoading;
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
       style={{ background: "rgb(var(--background))" }}>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
 
       {/* Blobs */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full pointer-events-none"
@@ -245,10 +406,16 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
             </p>
           </div>
 
+          {/* Google Sign-In */}
+          <GoogleSignInButton onSuccess={handleGoogleAuth} loading={googleLoading} />
+
+          {/* Divider */}
+          <OrDivider />
+
           {/* Form */}
           {mode === "login"
-            ? <LoginFormUI onSubmit={handleLogin} loading={loading} serverError={serverError} />
-            : <SignupFormUI onSubmit={handleSignup} loading={loading} serverError={serverError} />}
+            ? <LoginFormUI onSubmit={handleLogin} loading={isAnyLoading} serverError={serverError} />
+            : <SignupFormUI onSubmit={handleSignup} loading={isAnyLoading} serverError={serverError} />}
 
           {/* Toggle link */}
           <p className="text-center text-sm mt-6" style={{ color: "rgb(var(--foreground-faint))" }}>

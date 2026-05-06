@@ -1,4 +1,6 @@
 import logging
+import uuid
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.views import APIView
@@ -128,3 +130,111 @@ class CareerPathView(APIView):
     def get(self, request):
         paths = CareerPath.objects.filter(user=request.user)
         return Response(CareerPathSerializer(paths, many=True).data)
+
+
+class GoogleAuthView(APIView):
+    """
+    POST /api/auth/google/
+    Accepts a Google credential token (ID token from Google Sign-In),
+    verifies it, and either logs in or registers the user.
+    Returns JWT tokens matching the existing auth response format.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get("token", "").strip()
+        if not token:
+            return Response(
+                {"error": "Google credential token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Verify Google Token (Access Token from implicit flow) ─────────
+        try:
+            import requests as req
+            # The token received is an access_token, not an id_token.
+            # We call the userinfo endpoint to verify it and get user details.
+            response = req.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            if response.status_code != 200:
+                logger.warning("Google userinfo failed: %s", response.text)
+                return Response(
+                    {"error": "Invalid Google token. Please try again."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+                
+            idinfo = response.json()
+            
+        except Exception as e:
+            logger.warning("Google token verification error: %s", e)
+            return Response(
+                {"error": "Failed to communicate with Google."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        email = idinfo.get("email", "").lower().strip()
+        name = idinfo.get("name", "")
+
+        if not email:
+            return Response(
+                {"error": "Google account does not have an email address."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Get or create user ────────────────────────────────────────────
+        is_new_user = False
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            is_new_user = True
+            # Generate a unique username from the email prefix
+            base_username = email.split("@")[0][:30]
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}_{counter}"
+                counter += 1
+
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=None,  # Google users don't have a password
+            )
+            user.set_unusable_password()
+            user.save()
+            logger.info("New Google user registered: %s", email)
+
+        if not user.is_active:
+            return Response(
+                {"error": "This account has been disabled."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # ── Ensure profile exists ─────────────────────────────────────────
+        profile, _ = UserProfile.objects.get_or_create(
+            user=user,
+            defaults={"name": name or user.username},
+        )
+        if not profile.name and name:
+            profile.name = name
+            profile.save()
+
+        # ── Generate JWT tokens ───────────────────────────────────────────
+        tokens = _get_tokens(user)
+        logger.info("Google auth successful: %s (new=%s)", email, is_new_user)
+
+        return Response({
+            "message": "Google authentication successful.",
+            "tokens": tokens,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+            },
+            "is_new_user": is_new_user,
+            "is_assessment_completed": profile.is_assessment_completed,
+            "profile_completion": profile.profile_completion,
+        })

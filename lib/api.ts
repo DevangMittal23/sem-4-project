@@ -82,6 +82,10 @@ export async function apiLogin(username: string, password: string): Promise<Auth
   return apiFetch<AuthResponse>("/auth/login/", { method: "POST", body: JSON.stringify({ username, password }) }, false);
 }
 
+export async function apiGoogleAuth(token: string): Promise<AuthResponse & { is_new_user?: boolean }> {
+  return apiFetch<AuthResponse & { is_new_user?: boolean }>("/auth/google/", { method: "POST", body: JSON.stringify({ token }) }, false);
+}
+
 export async function apiLogout(refresh: string) {
   return apiFetch("/auth/logout/", { method: "POST", body: JSON.stringify({ refresh }) });
 }

@@ -1,8 +1,11 @@
 "use client";
 import { ThemeProvider } from "next-themes";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { getAccessToken } from "@/lib/api";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 function StoreHydrator({ children }: { children: React.ReactNode }) {
   const { loadProfile, loadIntelligence, loadStats, syncAll } = useStore();
@@ -40,7 +43,9 @@ function StoreHydrator({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <StoreHydrator>{children}</StoreHydrator>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <StoreHydrator>{children}</StoreHydrator>
+      </GoogleOAuthProvider>
     </ThemeProvider>
   );
 }

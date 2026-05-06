@@ -129,6 +129,9 @@ SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 ADZUNA_APP_ID  = os.environ.get("ADZUNA_APP_ID",  "e8f35901")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY", "c0f126251d3d80b02f3a1a8b2035b1c8")
 
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
 # ── Production security (Render only — only when DATABASE_URL is set) ─────────
 if os.environ.get("DATABASE_URL"):
     SECURE_SSL_REDIRECT          = True
