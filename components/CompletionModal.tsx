@@ -2,11 +2,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { AlertCircle, X, Bot } from "lucide-react";
-import { useProfile } from "@/lib/profileContext";
+import { useStore } from "@/lib/store";
 import ProfileChatbot from "@/components/ProfileChatbot";
 
 export default function CompletionModal() {
-  const { isGated, completion } = useProfile();
+  const { isGated, completion } = useStore();
   const [dismissed, setDismissed] = useState(false);
   const [chatDone, setChatDone] = useState(false);
 

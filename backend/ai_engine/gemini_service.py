@@ -23,16 +23,25 @@ def _call(prompt: str, temperature: float = 0.7) -> str:
         return ""
 
 
-def _parse_json(text: str):
+def _parse_json(text: str, expect_list: bool = False):
+    """Parse the first JSON object or array from an LLM response.
+
+    Args:
+        text: Raw LLM text output.
+        expect_list: If True, return a list when the top-level element is a JSON array.
+                     If False (default), always return a dict — wraps a top-level array in
+                     {"items": [...]} to prevent AttributeError on .get() calls.
+    """
     try:
         a, b = text.find("["), text.find("{")
         if a == -1 and b == -1:
-            return {}
+            return [] if expect_list else {}
         if a != -1 and (b == -1 or a < b):
-            return json.loads(text[a: text.rfind("]") + 1])
+            parsed = json.loads(text[a: text.rfind("]") + 1])
+            return parsed if expect_list else {}
         return json.loads(text[b: text.rfind("}") + 1])
     except Exception:
-        return {}
+        return [] if expect_list else {}
 
 
 # ── Skill Gap Analysis ────────────────────────────────────────────────────────
@@ -130,7 +139,7 @@ Return ONLY JSON array of 3:
 [{{"title":"","description":"","required_skills":[],"match_score":85,"timeline":"","salary_range":"","market_demand":"high","reasoning":""}}]"""
 
     raw = _call(prompt, 0.5)
-    result = _parse_json(raw)
+    result = _parse_json(raw, expect_list=True)
     return result if isinstance(result, list) and result else _fallback_career(profile)
 
 

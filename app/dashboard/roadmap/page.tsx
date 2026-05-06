@@ -2,424 +2,406 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import CompletionModal from "@/components/CompletionModal";
-import { useProfile } from "@/lib/profileContext";
+import { BentoCard, SectionLabel, Skeleton } from "@/components/ui";
+import { useStore } from "@/lib/store";
 import {
   apiGetSkillGap, apiRunSkillGap, apiGetRoadmap, apiGenerateRoadmap,
-  apiGetUserStatus, SkillGapData, RoadmapData,
+  SkillGapData, RoadmapData,
 } from "@/lib/api";
 import {
-  Sparkles, RefreshCw, Lock, ChevronRight, CheckCircle2, Circle,
+  Sparkles, RefreshCw, Lock, CheckCircle2, Circle,
   TrendingUp, AlertTriangle, Target, BookOpen, Code2, Users, Trophy,
-  DollarSign, BarChart2, Zap, ArrowRight,
+  DollarSign, BarChart3, Zap, ArrowRight, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 const PHASE_ICONS = [BookOpen, Code2, Users, Trophy];
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: "text-red-400 bg-red-500/10 border-red-500/20",
-  high: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  medium: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  low: "text-green-400 bg-green-500/10 border-green-500/20",
-};
-const TAG_COLORS: Record<string, string> = {
-  Learning: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  Practice: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-  Project: "text-green-400 bg-green-500/10 border-green-500/20",
-  Reading: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-  Career: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-};
 
-function SkeletonBlock({ h = "h-4", w = "w-full" }: { h?: string; w?: string }) {
-  return <div className={`${h} ${w} bg-white/8 rounded-lg animate-pulse`} />;
-}
+/* ── Milestone Node ──────────────────────────────────────────────────────── */
 
-function SkillGapSection({ gap, onSelectCareer }: { gap: SkillGapData; onSelectCareer: (title: string) => void }) {
-  const [selectedCareer, setSelectedCareer] = useState<string | null>(null);
+function MilestoneNode({ phase, isActive, isDone, index, roadmap }: {
+  phase: RoadmapData["phases"][0]; isActive: boolean; isDone: boolean;
+  index: number; roadmap: RoadmapData;
+}) {
+  const [expanded, setExpanded] = useState(isActive);
+  const Icon = PHASE_ICONS[index % 4];
+  const currentPlan = isActive ? roadmap.weekly_plans.find(wp => wp.is_current) : null;
 
-  const handleSelect = (title: string) => {
-    setSelectedCareer(title);
-    onSelectCareer(title);
-  };
+  const nodeColor = isDone
+    ? "rgb(var(--accent))"
+    : isActive
+    ? "rgb(var(--primary))"
+    : "rgb(var(--border-strong))";
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Market data */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        className="glass glow-border rounded-2xl p-5">
-        <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-          <BarChart2 size={13} className="text-purple-400" /> Job Market Data
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "Current Salary", value: gap.job_market_data.avg_salary_current, icon: DollarSign, color: "text-white/60" },
-            { label: "Target Salary", value: gap.job_market_data.avg_salary_target, icon: TrendingUp, color: "text-green-400" },
-            { label: "Market Demand", value: gap.job_market_data.demand_level, icon: Zap, color: gap.job_market_data.demand_level === "high" ? "text-green-400" : "text-amber-400" },
-            { label: "Growth Rate", value: gap.job_market_data.growth_rate, icon: BarChart2, color: "text-blue-400" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-white/3 border border-white/6 rounded-xl p-3">
-              <Icon size={14} className={`${color} mb-1.5`} />
-              <p className={`text-sm font-semibold ${color}`}>{value || "—"}</p>
-              <p className="text-[10px] text-white/35 mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
-        {gap.job_market_data.top_hiring_companies?.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-white/30">Top hiring:</span>
-            {gap.job_market_data.top_hiring_companies.slice(0, 5).map((c) => (
-              <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">{c}</span>
-            ))}
-          </div>
-        )}
-      </motion.div>
-
-      {/* Skill gap */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="glass glow-border rounded-2xl p-5">
-        <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-          <AlertTriangle size={13} className="text-amber-400" /> Skill Gap Analysis
-        </p>
-        <div className="flex flex-col gap-2">
-          {gap.gap_skills.slice(0, 6).map((g, i) => (
-            <motion.div key={g.skill} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white/2 border border-white/6">
-              <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${PRIORITY_COLORS[g.priority] || PRIORITY_COLORS.medium}`}>
-                {g.priority}
-              </span>
-              <span className="text-sm text-white/80 flex-1">{g.skill}</span>
-              <span className="text-[10px] text-white/30 shrink-0">{g.estimated_weeks}w</span>
-              <span className="text-[10px] text-white/25 hidden md:block max-w-[200px] truncate">{g.reason}</span>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Market insights */}
-      {gap.market_insights.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-          className="glass glow-border rounded-2xl p-5">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3 flex items-center gap-2">
-            <Sparkles size={13} className="text-purple-400" /> Market Insights
-          </p>
-          <div className="flex flex-col gap-2">
-            {gap.market_insights.slice(0, 4).map((insight, i) => (
-              <div key={i} className="flex gap-2 text-sm text-white/60">
-                <span className="text-purple-400 shrink-0 mt-0.5">•</span>
-                {insight}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Career options */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="glass glow-border rounded-2xl p-5">
-        <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-          <Target size={13} className="text-green-400" /> Career Options — Choose Your Path
-        </p>
-        <div className="flex flex-col gap-3">
-          {gap.career_options.map((opt, i) => (
-            <motion.button key={opt.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }} onClick={() => handleSelect(opt.title)}
-              className={`text-left p-4 rounded-xl border transition-all ${
-                selectedCareer === opt.title
-                  ? "border-purple-500/50 bg-purple-600/15"
-                  : "border-white/8 bg-white/2 hover:border-purple-500/30 hover:bg-purple-600/8"
-              }`}>
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-sm font-semibold text-white">{opt.title}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{opt.time_to_achieve} · {opt.salary_range}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs font-bold ${opt.fit_score >= 80 ? "text-green-400" : opt.fit_score >= 60 ? "text-amber-400" : "text-white/40"}`}>
-                    {opt.fit_score}% fit
-                  </span>
-                  {selectedCareer === opt.title && <CheckCircle2 size={16} className="text-purple-400" />}
-                </div>
-              </div>
-              <p className="text-xs text-white/50 mb-2">{opt.reason}</p>
-              {opt.required_gap_skills.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {opt.required_gap_skills.slice(0, 4).map((s) => (
-                    <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/35">{s}</span>
-                  ))}
-                </div>
-              )}
-            </motion.button>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Recommendations */}
-      {gap.recommendations.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-          className="glass glow-border rounded-2xl p-5">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3">AI Recommendations</p>
-          <div className="flex flex-col gap-2">
-            {gap.recommendations.map((r, i) => (
-              <div key={i} className="flex gap-2 text-sm text-white/65">
-                <ArrowRight size={14} className="text-purple-400 shrink-0 mt-0.5" />
-                {r}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-function RoadmapView({ roadmap }: { roadmap: RoadmapData }) {
-  const currentWeek = roadmap.current_week;
-  const progress = Math.round((currentWeek - 1) / roadmap.total_weeks * 100);
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Header stats */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="glass glow-border rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-lg font-bold text-white">{roadmap.career_title}</p>
-            <p className="text-xs text-white/40">Week {currentWeek} of {roadmap.total_weeks}</p>
-          </div>
-          <span className="text-2xl font-bold gradient-text">{progress}%</span>
-        </div>
-        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 1, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full" />
-        </div>
-      </motion.div>
-
-      {/* Phase timeline */}
-      <div className="relative">
-        <div className="absolute left-7 top-10 bottom-10 w-px bg-gradient-to-b from-purple-500/50 via-white/10 to-transparent" />
-        <div className="flex flex-col gap-5">
-          {roadmap.phases.map((phase, i) => {
-            const Icon = PHASE_ICONS[i % 4];
-            const isActive = currentWeek >= phase.week_start && currentWeek <= phase.week_end;
-            const isDone = currentWeek > phase.week_end;
-
-            return (
-              <motion.div key={phase.phase} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }} className="flex gap-4">
-                <div className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center border z-10
-                  ${isDone ? "bg-green-500/20 border-green-500/40"
-                    : isActive ? "bg-purple-600/25 border-purple-500/50"
-                    : "bg-white/3 border-white/8"}`}>
-                  {isDone ? <CheckCircle2 size={20} className="text-green-400" />
-                    : <Icon size={20} className={isActive ? "text-purple-400" : "text-white/20"} />}
-                </div>
-
-                <div className={`flex-1 rounded-2xl border p-5
-                  ${isDone ? "border-green-500/20 bg-green-500/3"
-                    : isActive ? "border-purple-500/30 bg-purple-500/5"
-                    : "border-white/6 bg-white/2"}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] text-white/25 font-mono">Phase {phase.phase_number}</span>
-                        {isActive && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300">Current</span>}
-                        {isDone && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-300">Complete</span>}
-                      </div>
-                      <h3 className={`text-base font-semibold ${isActive ? "text-white" : isDone ? "text-white/60" : "text-white/30"}`}>
-                        {phase.phase}
-                      </h3>
-                    </div>
-                    <span className="text-xs text-white/25 shrink-0">Weeks {phase.weeks}</span>
-                  </div>
-
-                  <p className={`text-sm mb-3 leading-relaxed ${isActive ? "text-white/55" : "text-white/25"}`}>{phase.goal}</p>
-
-                  {phase.focus_skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {phase.focus_skills.map((s) => (
-                        <span key={s} className={`text-[10px] px-2 py-0.5 rounded-full border
-                          ${isActive ? "border-purple-500/25 text-purple-300/70 bg-purple-500/8" : "border-white/8 text-white/22"}`}>
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Current week tasks preview */}
-                  {isActive && roadmap.weekly_plans.length > 0 && (() => {
-                    const currentPlan = roadmap.weekly_plans.find((wp) => wp.is_current);
-                    if (!currentPlan) return null;
-                    return (
-                      <div className="mt-3 pt-3 border-t border-white/5">
-                        <p className="text-[10px] text-purple-400 uppercase tracking-wider mb-2">This week — {currentPlan.theme}</p>
-                        <div className="flex flex-col gap-1.5">
-                          {currentPlan.tasks.slice(0, 3).map((t, j) => (
-                            <div key={j} className="flex items-center gap-2">
-                              {t.status === "done"
-                                ? <CheckCircle2 size={12} className="text-green-400 shrink-0" />
-                                : <Circle size={12} className="text-white/20 shrink-0" />}
-                              <span className={`text-xs ${t.status === "done" ? "line-through text-white/30" : "text-white/60"}`}>{t.title}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ml-auto shrink-0 ${TAG_COLORS[t.tag] || "text-white/30 border-white/10"}`}>{t.tag}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <p className={`text-xs mt-3 ${isActive ? "text-white/40" : "text-white/18"}`}>
-                    🎯 {phase.milestone}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
+    <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.4 }}
+      className="flex gap-4 relative">
+      {/* Node icon */}
+      <div className="flex flex-col items-center shrink-0 w-12 relative">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center z-10 transition-all"
+          style={{
+            background: isDone
+              ? "rgb(var(--accent) / 0.12)"
+              : isActive
+              ? "rgb(var(--primary) / 0.12)"
+              : "rgb(var(--surface))",
+            border: `2px solid ${nodeColor}`,
+            boxShadow: isActive ? "0 0 16px rgb(var(--primary) / 0.25)" : isDone ? "0 0 12px rgb(var(--accent) / 0.2)" : "none",
+          }}>
+          {isDone
+            ? <CheckCircle2 size={20} style={{ color: nodeColor }} />
+            : <Icon size={20} style={{ color: nodeColor }} />}
         </div>
       </div>
-    </div>
+
+      {/* Card */}
+      <div className="flex-1 rounded-2xl overflow-hidden mb-3"
+        style={{
+          background: "rgb(var(--surface))",
+          border: `1px solid ${isDone ? "rgb(var(--accent) / 0.2)" : isActive ? "rgb(var(--primary) / 0.25)" : "rgb(var(--border))"}`,
+          boxShadow: isActive ? "0 4px 24px rgb(var(--primary) / 0.08)" : "none",
+        }}>
+        <button onClick={() => setExpanded(!expanded)}
+          className="w-full flex items-start justify-between p-5 text-left hover:bg-[rgb(var(--primary)/0.03)] transition-colors">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-mono" style={{ color: "rgb(var(--foreground-faint))" }}>
+                Phase {phase.phase_number}
+              </span>
+              {isActive && (
+                <span className="badge badge-primary">Active</span>
+              )}
+              {isDone && (
+                <span className="badge badge-accent">Complete</span>
+              )}
+            </div>
+            <h3 className="text-heading"
+              style={{ color: isDone ? "rgb(var(--foreground-muted))" : "rgb(var(--foreground))" }}>
+              {phase.phase}
+            </h3>
+            <p className="text-caption mt-1">{phase.goal}</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-caption">Wks {phase.weeks}</span>
+            {expanded
+              ? <ChevronUp size={14} style={{ color: "rgb(var(--foreground-faint))" }} />
+              : <ChevronDown size={14} style={{ color: "rgb(var(--foreground-faint))" }} />}
+          </div>
+        </button>
+
+        <AnimatePresence>
+          {expanded && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+              <div className="px-5 pb-5 border-t" style={{ borderColor: "rgb(var(--border-subtle))" }}>
+                {/* Focus skills */}
+                {phase.focus_skills.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-label mb-2">Focus Skills</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {phase.focus_skills.map(s => (
+                        <span key={s} className="badge badge-primary">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Current week */}
+                {isActive && currentPlan && (
+                  <div className="mt-4">
+                    <p className="text-label mb-2" style={{ color: "rgb(var(--primary))" }}>
+                      This Week — {currentPlan.theme}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {currentPlan.tasks.map((t, j) => (
+                        <div key={j} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+                          style={{ background: "rgb(var(--background-alt))" }}>
+                          {t.status === "done"
+                            ? <CheckCircle2 size={13} style={{ color: "rgb(var(--accent))" }} />
+                            : <Circle size={13} style={{ color: "rgb(var(--border-strong))" }} />}
+                          <span className={`text-sm flex-1 ${t.status === "done" ? "line-through" : ""}`}
+                            style={{ color: t.status === "done" ? "rgb(var(--foreground-faint))" : "rgb(var(--foreground))" }}>
+                            {t.title}
+                          </span>
+                          <span className="badge badge-primary">{t.tag}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Milestone */}
+                <div className="mt-4 flex items-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ background: "rgb(var(--warning) / 0.06)", border: "1px solid rgb(var(--warning) / 0.15)" }}>
+                  <Trophy size={13} style={{ color: "rgb(var(--warning))" }} />
+                  <span className="text-xs font-medium" style={{ color: "rgb(var(--foreground-muted))" }}>
+                    {phase.milestone}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   ROADMAP PAGE
+   ════════════════════════════════════════════════════════════════ */
+
 export default function RoadmapPage() {
-  const { profile, isGated } = useProfile();
-  const [gap, setGap] = useState<SkillGapData | null>(null);
-  const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
-  const [selectedCareer, setSelectedCareer] = useState<string | null>(null);
-  const [loadingGap, setLoadingGap] = useState(false);
-  const [loadingRoadmap, setLoadingRoadmap] = useState(false);
-  const [view, setView] = useState<"gap" | "roadmap">("gap");
+  const { profile, isGated } = useStore();
+  const [gap, setGap]           = useState<SkillGapData | null>(null);
+  const [roadmap, setRoadmap]   = useState<RoadmapData | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [loadGap, setLoadGap]   = useState(false);
+  const [loadMap, setLoadMap]   = useState(false);
+  const [view, setView]         = useState<"gap" | "roadmap">("gap");
+  const [skillOverlay, setSkillOverlay] = useState(false);
 
   useEffect(() => {
     if (isGated) return;
-    // Try loading existing data
     apiGetSkillGap().then(setGap).catch(() => {});
-    apiGetRoadmap().then((r) => { setRoadmap(r); setView("roadmap"); }).catch(() => {});
+    apiGetRoadmap().then(r => { setRoadmap(r); setView("roadmap"); }).catch(() => {});
   }, [isGated]);
 
-  const runGapAnalysis = async () => {
-    setLoadingGap(true);
-    try {
-      const result = await apiRunSkillGap();
-      setGap(result);
-      setView("gap");
-    } catch {}
-    setLoadingGap(false);
+  const runGap = async () => {
+    setLoadGap(true);
+    try { setGap(await apiRunSkillGap()); setView("gap"); } catch {}
+    setLoadGap(false);
+  };
+  const genRoadmap = async () => {
+    if (!selected) return;
+    setLoadMap(true);
+    try { setRoadmap(await apiGenerateRoadmap(selected)); setView("roadmap"); } catch {}
+    setLoadMap(false);
   };
 
-  const generateRoadmap = async () => {
-    if (!selectedCareer) return;
-    setLoadingRoadmap(true);
-    try {
-      const result = await apiGenerateRoadmap(selectedCareer);
-      setRoadmap(result);
-      setView("roadmap");
-    } catch {}
-    setLoadingRoadmap(false);
-  };
+  const progress = roadmap ? Math.round((roadmap.current_week - 1) / roadmap.total_weeks * 100) : 0;
 
   return (
-    <div className="flex min-h-screen bg-[#050508]">
+    <div className="flex min-h-screen" style={{ background: "rgb(var(--background))" }}>
       <Sidebar />
-      <CompletionModal />
-
       <main className="flex-1 overflow-y-auto">
-        <div className="fixed top-0 right-0 w-[400px] h-[400px] bg-purple-600/5 rounded-full blur-[100px] pointer-events-none" />
-
         <div className="max-w-3xl mx-auto px-6 py-8">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={14} className="text-purple-400" />
-              <span className="text-xs text-purple-400 uppercase tracking-wider font-medium">AI Powered</span>
-            </div>
-            <h1 className="text-2xl font-bold text-white">Career Roadmap</h1>
-            <p className="text-sm text-white/40 mt-1">
-              {profile.goal === "switch_domain" ? `Transition into ${profile.target_domain || "your target domain"}`
-                : `Growth path for ${profile.profession || "your career"}`}
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+            <p className="text-label mb-1" style={{ color: "rgb(var(--primary))" }}>
+              <Sparkles size={10} className="inline mr-1" />AI-Powered Career Engine
+            </p>
+            <h1 className="text-display">Career Roadmap</h1>
+            <p className="text-caption mt-1">
+              {profile?.goal === "switch_domain"
+                ? `Transition into ${profile?.preferred_domain || "your target domain"}`
+                : `Growth path for ${profile?.profession || "your career"}`}
             </p>
           </motion.div>
 
           {isGated ? (
-            <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-              className="glass glow-border rounded-2xl p-12 text-center">
-              <Lock size={32} className="text-white/20 mx-auto mb-4" />
-              <p className="text-white font-semibold mb-2">Complete your profile to unlock your roadmap</p>
-              <p className="text-sm text-white/40">We need your profile to generate a personalized career path.</p>
-            </motion.div>
+            <BentoCard className="p-12 text-center">
+              <Lock size={32} style={{ color: "rgb(var(--border-strong))" }} className="mx-auto mb-4" />
+              <p className="text-heading mb-2">Complete your profile to unlock your roadmap</p>
+              <p className="text-body">We need your profile data to generate a personalised career path.</p>
+            </BentoCard>
           ) : (
             <>
-              {/* Action bar */}
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
+              {/* Controls */}
+              <div className="flex items-center gap-2 mb-6 flex-wrap">
                 {roadmap && (
                   <div className="flex gap-2">
-                    <button onClick={() => setView("gap")}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === "gap" ? "btn-primary text-white" : "glass border border-white/10 text-white/50 hover:text-white"}`}>
-                      Skill Gap
-                    </button>
-                    <button onClick={() => setView("roadmap")}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === "roadmap" ? "btn-primary text-white" : "glass border border-white/10 text-white/50 hover:text-white"}`}>
-                      Roadmap
-                    </button>
+                    {(["gap", "roadmap"] as const).map(v => (
+                      <button key={v} onClick={() => setView(v)}
+                        className={view === v ? "btn-primary" : "btn-secondary"}>
+                        {v === "gap" ? "Skill Gap" : "Roadmap"}
+                      </button>
+                    ))}
+                    {view === "roadmap" && (
+                      <button onClick={() => setSkillOverlay(!skillOverlay)}
+                        className={skillOverlay ? "btn-primary" : "btn-secondary"}>
+                        Skill Overlay
+                      </button>
+                    )}
                   </div>
                 )}
-                <motion.button onClick={runGapAnalysis} disabled={loadingGap}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-purple-500/30 text-purple-300 text-sm hover:bg-purple-600/15 transition-all disabled:opacity-50 ml-auto">
-                  {loadingGap ? <RefreshCw size={14} className="animate-spin" /> : <BarChart2 size={14} />}
-                  {loadingGap ? "Analyzing market..." : gap ? "Re-analyze" : "Analyze Skill Gap"}
-                </motion.button>
+                <button onClick={runGap} disabled={loadGap} className="btn-secondary ml-auto">
+                  {loadGap ? <RefreshCw size={14} className="animate-spin" /> : <BarChart3 size={14} />}
+                  {loadGap ? "Analysing…" : gap ? "Re-analyse" : "Analyse Skill Gap"}
+                </button>
               </div>
 
-              {/* Loading state */}
-              {loadingGap && (
+              {/* Roadmap view */}
+              {!loadMap && roadmap && view === "roadmap" && (
                 <div className="flex flex-col gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="glass glow-border rounded-2xl p-5 flex flex-col gap-3">
-                      <SkeletonBlock h="h-3" w="w-1/4" />
-                      <SkeletonBlock h="h-5" w="w-3/4" />
-                      <SkeletonBlock h="h-3" w="w-full" />
-                      <SkeletonBlock h="h-3" w="w-2/3" />
+                  {/* Progress header */}
+                  <BentoCard>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-heading">{roadmap.career_title}</p>
+                        <p className="text-caption">Week {roadmap.current_week} of {roadmap.total_weeks}</p>
+                      </div>
+                      <span className="text-3xl font-black gradient-text">{progress}%</span>
                     </div>
-                  ))}
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgb(var(--border))" }}>
+                      <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 1, ease: "easeOut" }}
+                        className="h-full rounded-full"
+                        style={{ background: "linear-gradient(90deg, rgb(var(--primary)), rgb(var(--accent)))" }} />
+                    </div>
+
+                    {/* Skill overlay */}
+                    <AnimatePresence>
+                      {skillOverlay && gap && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }} className="mt-4 pt-4 border-t overflow-hidden"
+                          style={{ borderColor: "rgb(var(--border-subtle))" }}>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-label mb-2" style={{ color: "rgb(var(--accent))" }}>Current Skills</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {gap.current_skills.slice(0, 6).map(s => (
+                                  <span key={s} className="badge badge-accent">{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-label mb-2" style={{ color: "rgb(var(--danger))" }}>Required Skills</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {gap.required_skills.slice(0, 6).map(s => (
+                                  <span key={s} className="badge badge-danger">{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </BentoCard>
+
+                  {/* SVG connector + milestone nodes */}
+                  <div className="relative">
+                    <div className="absolute left-6 top-6 bottom-0 w-px"
+                      style={{ background: `linear-gradient(to bottom, rgb(var(--primary) / 0.4), rgb(var(--border) / 0.3), transparent)` }} />
+                    <div className="flex flex-col gap-0">
+                      {roadmap.phases.map((phase, i) => (
+                        <MilestoneNode key={phase.phase} phase={phase} index={i}
+                          isActive={roadmap.current_week >= phase.week_start && roadmap.current_week <= phase.week_end}
+                          isDone={roadmap.current_week > phase.week_end}
+                          roadmap={roadmap} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Gap analysis view */}
-              {!loadingGap && gap && view === "gap" && (
-                <>
-                  <SkillGapSection gap={gap} onSelectCareer={setSelectedCareer} />
-                  {selectedCareer && (
+              {/* Skill gap view */}
+              {!loadGap && gap && view === "gap" && (
+                <div className="flex flex-col gap-4">
+                  {/* Market data */}
+                  <BentoCard>
+                    <SectionLabel icon={BarChart3} children="Job Market Data" color="rgb(var(--primary))" />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { l: "Current Salary", v: gap.job_market_data.avg_salary_current, c: "rgb(var(--foreground-muted))", ic: DollarSign },
+                        { l: "Target Salary",  v: gap.job_market_data.avg_salary_target,  c: "rgb(var(--accent))",           ic: TrendingUp },
+                        { l: "Market Demand",  v: gap.job_market_data.demand_level,        c: gap.job_market_data.demand_level === "high" ? "rgb(var(--accent))" : "rgb(var(--warning))", ic: Zap },
+                        { l: "Growth Rate",    v: gap.job_market_data.growth_rate,         c: "rgb(var(--primary))",          ic: BarChart3 },
+                      ].map(({ l, v, c, ic: Ic }) => (
+                        <div key={l} className="p-3 rounded-xl"
+                          style={{ background: "rgb(var(--background-alt))", border: "1px solid rgb(var(--border-subtle))" }}>
+                          <Ic size={14} style={{ color: c }} className="mb-1.5" />
+                          <p className="text-sm font-bold" style={{ color: c }}>{v || "—"}</p>
+                          <p className="text-label">{l}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </BentoCard>
+
+                  {/* Gap skills */}
+                  <BentoCard>
+                    <SectionLabel icon={AlertTriangle} children="Skill Gaps" color="rgb(var(--warning))" />
+                    <div className="flex flex-col gap-2">
+                      {gap.gap_skills.slice(0, 6).map((g, i) => (
+                        <motion.div key={g.skill} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                          style={{ background: "rgb(var(--background-alt))" }}>
+                          <span className={`badge ${g.priority === "critical" ? "badge-danger" : "badge-warning"}`}>
+                            {g.priority}
+                          </span>
+                          <span className="text-sm flex-1" style={{ color: "rgb(var(--foreground))" }}>{g.skill}</span>
+                          <span className="text-caption">{g.estimated_weeks}w</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </BentoCard>
+
+                  {/* Career options */}
+                  <BentoCard>
+                    <SectionLabel icon={Target} children="Choose Your Path" color="rgb(var(--accent))" />
+                    <div className="flex flex-col gap-3">
+                      {gap.career_options.map(opt => (
+                        <button key={opt.title} onClick={() => setSelected(opt.title)}
+                          className="text-left p-4 rounded-xl border transition-all"
+                          style={{
+                            background: selected === opt.title ? "rgb(var(--primary) / 0.06)" : "rgb(var(--background-alt))",
+                            borderColor: selected === opt.title ? "rgb(var(--primary-border))" : "rgb(var(--border-subtle))",
+                            boxShadow: selected === opt.title ? "var(--primary-glow)" : "none",
+                          }}>
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-subheading">{opt.title}</p>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`badge ${opt.fit_score >= 80 ? "badge-accent" : "badge-warning"}`}>
+                                {opt.fit_score}% fit
+                              </span>
+                              {selected === opt.title && <CheckCircle2 size={15} style={{ color: "rgb(var(--primary))" }} />}
+                            </div>
+                          </div>
+                          <p className="text-caption">{opt.reason}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </BentoCard>
+
+                  {selected && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      className="mt-5 p-4 glass border border-purple-500/30 rounded-2xl flex items-center justify-between">
+                      className="card p-5 flex items-center justify-between"
+                      style={{ borderColor: "rgb(var(--primary-border))", boxShadow: "var(--primary-glow)" }}>
                       <div>
-                        <p className="text-sm font-semibold text-white">Selected: {selectedCareer}</p>
-                        <p className="text-xs text-white/40">Generate your personalized 12-week roadmap</p>
+                        <p className="text-subheading">{selected}</p>
+                        <p className="text-caption">Generate your personalised 12-week roadmap</p>
                       </div>
-                      <motion.button onClick={generateRoadmap} disabled={loadingRoadmap}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl btn-primary text-white text-sm font-medium disabled:opacity-60">
-                        {loadingRoadmap ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                        {loadingRoadmap ? "Generating..." : "Generate Roadmap"}
-                      </motion.button>
+                      <button onClick={genRoadmap} disabled={loadMap} className="btn-primary">
+                        {loadMap ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                        {loadMap ? "Generating…" : "Generate"}
+                      </button>
                     </motion.div>
                   )}
-                </>
+                </div>
               )}
 
-              {/* Roadmap view */}
-              {!loadingRoadmap && roadmap && view === "roadmap" && <RoadmapView roadmap={roadmap} />}
-
               {/* Empty state */}
-              {!loadingGap && !gap && !roadmap && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="glass glow-border rounded-2xl p-12 text-center">
-                  <BarChart2 size={40} className="text-purple-400/40 mx-auto mb-4" />
-                  <p className="text-white font-semibold mb-2">Start with a Skill Gap Analysis</p>
-                  <p className="text-sm text-white/40 mb-6">We'll analyze your skills against market requirements and suggest the best career paths for you.</p>
-                  <motion.button onClick={runGapAnalysis} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-primary text-white text-sm font-medium">
-                    <Sparkles size={15} /> Analyze My Skills
-                  </motion.button>
-                </motion.div>
+              {!loadGap && !gap && !roadmap && (
+                <BentoCard className="p-12 text-center">
+                  <BarChart3 size={40} style={{ color: "rgb(var(--border-strong))" }} className="mx-auto mb-4" />
+                  <p className="text-heading mb-2">Start with a Skill Gap Analysis</p>
+                  <p className="text-body mb-6">We'll analyse your skills against live market requirements.</p>
+                  <button onClick={runGap} className="btn-primary mx-auto">
+                    <Sparkles size={15} /> Analyse My Skills
+                  </button>
+                </BentoCard>
+              )}
+
+              {/* Loading skeleton */}
+              {(loadGap || loadMap) && (
+                <div className="flex flex-col gap-4">
+                  {[1, 2, 3].map(i => (
+                    <BentoCard key={i} className="flex flex-col gap-3">
+                      <Skeleton width="w-1/4" height="h-3" />
+                      <Skeleton width="w-3/4" height="h-5" />
+                      <Skeleton height="h-3" />
+                      <Skeleton width="w-4/5" height="h-3" />
+                    </BentoCard>
+                  ))}
+                </div>
               )}
             </>
           )}

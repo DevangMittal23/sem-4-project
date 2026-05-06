@@ -1,141 +1,151 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { ArrowRight, Brain, BarChart3, Target, CheckCircle2, Sparkles } from "lucide-react";
+import { useRef } from "react";
 
-function AnimatedBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const STATS = [
+  { value: "12K+", label: "Professionals Guided" },
+  { value: "94%", label: "Career Match Accuracy" },
+  { value: "3×", label: "Faster Job Placement" },
+];
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; alpha: number }[] = [];
-    for (let i = 0; i < 80; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        r: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.5 + 0.1,
-      });
-    }
-
-    let animId: number;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(139, 92, 246, ${p.alpha})`;
-        ctx.fill();
-      });
-
-      particles.forEach((a, i) => {
-        particles.slice(i + 1).forEach((b) => {
-          const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${0.08 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        });
-      });
-
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener("resize", resize);
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
-}
+const BADGES = [
+  { icon: Brain, text: "AI-Powered Analysis" },
+  { icon: BarChart3, text: "Live Market Data" },
+  { icon: Target, text: "Personalised Roadmap" },
+];
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.15, duration: 0.6, ease: "easeOut" as const } }),
+  hidden: { opacity: 0, y: 28 },
+  show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.13, duration: 0.55, ease: "easeOut" as const } }),
 };
 
 export default function Hero() {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const y    = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const fade = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <AnimatedBackground />
+    <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
 
-      <div className="absolute inset-0 bg-gradient-radial from-purple-900/20 via-transparent to-transparent" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* ── Dual-theme gradient blobs ── */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Light mode visible gradient */}
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full opacity-30 dark:opacity-0 transition-opacity"
+          style={{ background: "radial-gradient(circle, rgb(var(--primary) / 0.12) 0%, transparent 70%)", transform: "translate(20%, -20%)" }} />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full opacity-20 dark:opacity-0 transition-opacity"
+          style={{ background: "radial-gradient(circle, rgb(var(--accent) / 0.10) 0%, transparent 70%)", transform: "translate(-20%, 20%)" }} />
+        {/* Dark mode blobs */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-0 dark:opacity-100 transition-opacity"
+          style={{ background: "rgb(var(--primary) / 0.08)", filter: "blur(120px)" }} />
+      </div>
 
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-        <motion.div custom={0} variants={fadeUp} initial="hidden" animate="show">
-          <span className="inline-block px-4 py-1.5 text-xs font-medium rounded-full glass border border-purple-500/30 text-purple-300 mb-6">
-            ✨ AI-Powered Career Guidance
-          </span>
+      {/* ── Grid pattern ── */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.025] dark:opacity-[0.04]"
+        style={{
+          backgroundImage: "linear-gradient(rgb(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--foreground)) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }} />
+
+      {/* ── Content ── */}
+      <motion.div style={{ y, opacity: fade }} className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+
+        {/* Badge row */}
+        <motion.div custom={0} variants={fadeUp} initial="hidden" animate="show"
+          className="flex flex-wrap items-center justify-center gap-2 mb-8">
+          {BADGES.map(({ icon: Icon, text }) => (
+            <span key={text}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+              style={{
+                background: "rgb(var(--primary) / 0.08)",
+                border: "1px solid rgb(var(--primary-border))",
+                color: "rgb(var(--primary))",
+              }}>
+              <Icon size={11} />{text}
+            </span>
+          ))}
         </motion.div>
 
-        <motion.h1
-          custom={1}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="text-5xl md:text-7xl font-bold leading-tight mb-6"
-        >
+        {/* Headline */}
+        <motion.h1 custom={1} variants={fadeUp} initial="hidden" animate="show"
+          className="text-5xl md:text-7xl font-black leading-[1.08] tracking-tight mb-6"
+          style={{ color: "rgb(var(--foreground))" }}>
           Find Your{" "}
           <span className="gradient-text">Perfect Career</span>
           <br />Path with AI
         </motion.h1>
 
-        <motion.p
-          custom={2}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="text-lg md:text-xl text-foreground/60 max-w-2xl mx-auto mb-10"
-        >
-          Personalized career roadmap based on your behavior, skills, and goals
+        {/* Subheading */}
+        <motion.p custom={2} variants={fadeUp} initial="hidden" animate="show"
+          className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
+          style={{ color: "rgb(var(--foreground-muted))" }}>
+          Personalised career roadmaps built from your skills, behaviour, and goals —
+          powered by <span className="font-semibold" style={{ color: "rgb(var(--foreground))" }}>live Adzuna market data</span>.
         </motion.p>
 
-        <motion.div
-          custom={3}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-        >
-          <Link
-            href="/signup"
-            className="px-8 py-3.5 rounded-xl btn-primary text-foreground font-semibold text-base"
-          >
-            Get Started →
+        {/* CTA buttons */}
+        <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show"
+          className="flex flex-col sm:flex-row gap-4 justify-center mb-14">
+          <Link href="/signup"
+            className="btn-primary text-base px-8 py-3.5 flex items-center justify-center gap-2 group">
+            Start for Free
+            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
-          <Link
-            href="/login"
-            className="px-8 py-3.5 rounded-xl border border-foreground/20 text-foreground/80 hover:border-purple-500/50 hover:text-foreground transition-all font-medium text-base"
+          <Link href="/login"
+            className="text-base px-8 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+            style={{
+              background: "rgb(var(--surface))",
+              border: "1px solid rgb(var(--border-strong))",
+              color: "rgb(var(--foreground))",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = "rgb(var(--primary-border))";
+              (e.currentTarget as HTMLElement).style.boxShadow = "var(--primary-glow)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.borderColor = "rgb(var(--border-strong))";
+              (e.currentTarget as HTMLElement).style.boxShadow = "none";
+            }}
           >
-            Login
+            Sign In
           </Link>
         </motion.div>
-      </div>
+
+        {/* Stats row */}
+        <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show"
+          className="flex flex-wrap items-center justify-center gap-8">
+          {STATS.map((s, i) => (
+            <div key={s.label} className="text-center flex items-center gap-4">
+              {i > 0 && <div className="w-px h-8 hidden sm:block" style={{ background: "rgb(var(--border))" }} />}
+              <div>
+                <p className="text-2xl font-black gradient-text">{s.value}</p>
+                <p className="text-xs font-medium mt-0.5" style={{ color: "rgb(var(--foreground-faint))" }}>{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Trust line */}
+        <motion.div custom={5} variants={fadeUp} initial="hidden" animate="show"
+          className="flex items-center justify-center gap-2 mt-8">
+          <CheckCircle2 size={13} style={{ color: "rgb(var(--accent))" }} />
+          <span className="text-xs font-medium" style={{ color: "rgb(var(--foreground-faint))" }}>
+            No credit card required · Powered by Groq + Gemini AI
+          </span>
+        </motion.div>
+      </motion.div>
+
+      {/* Scroll indicator */}
+      <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
+        <div className="w-5 h-8 rounded-full border-2 flex items-start justify-center pt-1"
+          style={{ borderColor: "rgb(var(--border-strong))" }}>
+          <div className="w-1 h-2 rounded-full" style={{ background: "rgb(var(--primary))" }} />
+        </div>
+        <span className="text-[10px] font-medium" style={{ color: "rgb(var(--foreground-faint))" }}>Scroll</span>
+      </motion.div>
     </section>
   );
 }

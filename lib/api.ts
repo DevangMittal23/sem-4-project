@@ -195,6 +195,11 @@ export interface CareerPathResult {
   created_at: string;
 }
 
+export async function apiGetCareers(): Promise<CareerPathResult[]> {
+  return apiFetch<CareerPathResult[]>("/ai/career/");
+}
+
+/** Regenerates career paths via Gemini — deletes existing paths first. Use only on explicit user action. */
 export async function apiPredictCareer(): Promise<CareerPathResult[]> {
   return apiFetch<CareerPathResult[]>("/ai/career/", { method: "POST", body: JSON.stringify({}) });
 }
@@ -389,6 +394,7 @@ export interface DashboardStats {
   career_title: string | null;
   profile_completion: number;
   roadmap_pct: number;
+  roadmap_progress: number;   // alias for roadmap_pct
 }
 
 export async function apiGetDashboardStats(): Promise<DashboardStats> {

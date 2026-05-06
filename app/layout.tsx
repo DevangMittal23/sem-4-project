@@ -1,20 +1,27 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ProfileProvider } from "@/lib/profileContext";
+import { Providers } from "@/components/Providers";
 
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "AI Career Mentor",
-  description: "Find your perfect career path with AI",
+  description: "Enterprise AI-powered career intelligence platform",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-[#050508] text-white antialiased">
-        <ProfileProvider>{children}</ProfileProvider>
+    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col antialiased">
+        <Providers>
+          <ProfileProvider>{children}</ProfileProvider>
+        </Providers>
       </body>
     </html>
   );

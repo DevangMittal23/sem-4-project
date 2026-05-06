@@ -28,7 +28,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data["email"],
             password=validated_data["password"],
         )
-        UserProfile.objects.create(user=user, name=validated_data["username"])
+        UserProfile.objects.get_or_create(user=user, defaults={"name": validated_data["username"]})
         return user
 
 

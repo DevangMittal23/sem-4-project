@@ -161,13 +161,6 @@ function Section({ section }: { section: SectionDef }) {
   };
 
   const save = async () => {
-    // Build frontend context update (store display values locally)
-    const contextUpdate: Partial<ProfileData> = {};
-    section.fields.forEach((f) => {
-      (contextUpdate as Record<string, unknown>)[f.key as string] = draft[f.key as string] ?? "";
-    });
-    updateProfile(contextUpdate);
-    setEditing(false);
     setSaving(true);
 
     try {
@@ -198,10 +191,17 @@ function Section({ section }: { section: SectionDef }) {
       });
 
       const updated = await apiUpdateProfile(payload);
-      // Use backend's authoritative completion %
-      updateProfile({ backend_completion: updated.profile_completion });
+
+      // Only update local context AFTER successful API save
+      const contextUpdate: Partial<ProfileData> = {};
+      section.fields.forEach((f) => {
+        (contextUpdate as Record<string, unknown>)[f.key as string] = draft[f.key as string] ?? "";
+      });
+      updateProfile({ ...contextUpdate, backend_completion: updated.profile_completion });
+      setEditing(false);
     } catch (err) {
       console.error("Profile save failed:", err);
+      // Keep editing open so user can retry — do not update local state
     } finally {
       setSaving(false);
     }

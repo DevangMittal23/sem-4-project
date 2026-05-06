@@ -1,443 +1,489 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useProfile, REQUIRED_FIELDS, ProfileData } from "@/lib/profileContext";
+import { useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
 import Sidebar from "@/components/Sidebar";
 import ProfileChatbot from "@/components/ProfileChatbot";
 import {
-  CheckCircle2, AlertCircle, Sparkles, Bot, ChevronDown, ChevronUp,
+  CheckCircle2, AlertCircle, Bot, ChevronDown, ChevronUp,
   User, Briefcase, GraduationCap, Target, Clock, Brain, TrendingUp,
-  Shield, Zap, BookOpen, Star, Award, Globe, ArrowRight, BarChart2,
+  Shield, Zap, BookOpen, Star, Award, Globe, ArrowRight, BarChart3, XCircle,
 } from "lucide-react";
-import { apiGetProfile } from "@/lib/api";
+import {
+  apiGetProfile, apiGetSkillGap, apiGetCareers,
+  getAccessToken, ApiProfile, SkillGapData, CareerPathResult,
+} from "@/lib/api";
 
-const CODE_LABELS: Record<string, string> = {
-  switch_domain: "Switch Domain", excel_current: "Excel in Current Domain",
-  get_job: "Get a Job", promotion: "Promotion", side_income: "Side Income",
-  student: "Student", employed: "Employed", freelance: "Freelance",
-  unemployed: "Unemployed", career_break: "Career Break",
-  high_school: "High School", diploma: "Diploma", bachelors: "Bachelor's",
-  masters: "Master's", phd: "PhD", self_taught: "Self-taught",
-  fresher: "Fresher", junior: "Junior", mid: "Mid-level", senior: "Senior", lead: "Lead / Principal",
-  lt5: "< 5 hrs/week", "5_10": "5–10 hrs/week", "10_20": "10–20 hrs/week", gt20: "20+ hrs/week",
-  low: "Low — Prefer stability", medium: "Medium — Balanced", high: "High — Embrace challenges",
-  visual: "Visual learner", "hands-on": "Hands-on / Project-based", reading: "Reading / Docs", mixed: "Mixed",
+const REQUIRED = ["name","profession","experience_level","education","current_status","availability","goal"] as const;
+const FIELD_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
+  name: { label: "Full Name", icon: User },
+  profession: { label: "Profession", icon: Briefcase },
+  experience_level: { label: "Experience Level", icon: TrendingUp },
+  education: { label: "Education", icon: GraduationCap },
+  current_status: { label: "Current Status", icon: Shield },
+  availability: { label: "Availability", icon: Clock },
+  goal: { label: "Career Goal", icon: Target },
 };
 
-function label(val: unknown): string {
-  if (!val) return "";
-  if (Array.isArray(val)) return val.join(", ");
-  const s = String(val);
-  return CODE_LABELS[s] ?? s;
-}
+const CODE_LABELS: Record<string, string> = {
+  switch_domain:"Switch Domain", excel_current:"Excel in Current Domain",
+  get_job:"Get a Job", promotion:"Promotion", side_income:"Side Income",
+  student:"Student", employed:"Employed", freelance:"Freelance",
+  unemployed:"Unemployed", career_break:"Career Break",
+  high_school:"High School", diploma:"Diploma", bachelors:"Bachelor's",
+  masters:"Master's", phd:"PhD", self_taught:"Self-taught",
+  fresher:"Fresher", junior:"Junior", mid:"Mid-level", senior:"Senior", lead:"Lead / Principal",
+  lt5:"< 5 hrs/week", "5_10":"5–10 hrs/week", "10_20":"10–20 hrs/week", gt20:"20+ hrs/week",
+  low:"Low — Stable", medium:"Medium — Balanced", high:"High — Embrace risk",
+  visual:"Visual learner", "hands-on":"Hands-on / Project-based", reading:"Reading / Docs", mixed:"Mixed",
+};
+const lbl = (v: unknown) => { if (!v) return ""; const s = String(v); return CODE_LABELS[s] ?? s; };
 
-function CompletionRing({ pct }: { pct: number }) {
-  const r = 38;
-  const circ = 2 * Math.PI * r;
-  const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#a78bfa" : "#f59e0b";
+/* ── Shared section card ─────────────────────────────────────── */
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-      <svg width="96" height="96" className="-rotate-90">
-        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-        <motion.circle cx="48" cy="48" r={r} fill="none" stroke={color} strokeWidth="6"
-          strokeLinecap="round" strokeDasharray={circ}
-          initial={{ strokeDashoffset: circ }}
-          animate={{ strokeDashoffset: circ - (pct / 100) * circ }}
-          transition={{ duration: 1.2, ease: "easeOut" }} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-bold text-white">{pct}%</span>
-        <span className="text-[9px] text-white/40 uppercase tracking-wider">complete</span>
-      </div>
+    <div className={`rounded-2xl p-5 ${className}`}
+      style={{
+        background: "rgb(var(--surface))",
+        border: "1px solid rgb(var(--border-strong))",
+        boxShadow: "var(--shadow-sm)",
+      }}>
+      {children}
     </div>
   );
 }
 
-function StatPill({ icon: Icon, label, value, color = "text-purple-400" }: {
-  icon: React.ElementType; label: string; value: string; color?: string;
-}) {
+/* ── Section label ───────────────────────────────────────────── */
+function SLabel({ icon: Icon, text, color }: { icon: React.ElementType; text: string; color?: string }) {
+  return (
+    <p className="text-label flex items-center gap-2 mb-4"
+      style={{ color: color || "rgb(var(--primary))" }}>
+      <Icon size={11} /> {text}
+    </p>
+  );
+}
+
+/* ── Info tile ───────────────────────────────────────────────── */
+function Tile({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string; color: string }) {
   if (!value) return null;
   return (
-    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white/3 border border-white/6">
-      <Icon size={14} className={color} />
-      <div className="min-w-0">
-        <p className="text-[10px] text-white/35 uppercase tracking-wider">{label}</p>
-        <p className="text-sm text-white/80 truncate">{value}</p>
+    <div className="p-3.5 rounded-xl flex flex-col gap-1.5"
+      style={{ background: "rgb(var(--background-alt))", border: "1px solid rgb(var(--border))" }}>
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ background: `${color.replace(")", " / 0.12)")}`, border: `1px solid ${color.replace(")", " / 0.2)")}` }}>
+        <Icon size={13} style={{ color }} />
       </div>
-    </div>
-  );
-}
-
-function SkillBar({ skill, level }: { skill: string; level?: string }) {
-  const pct = level === "expert" ? 90 : level === "advanced" ? 75 : level === "intermediate" ? 55 : 35;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-white/70 w-28 shrink-0 truncate">{skill}</span>
-      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500" />
-      </div>
-      {level && <span className="text-[10px] text-white/30 w-20 shrink-0">{level}</span>}
-    </div>
-  );
-}
-
-function GoalBadge({ goal }: { goal: string }) {
-  const config: Record<string, { color: string; bg: string; border: string; icon: React.ElementType; desc: string }> = {
-    switch_domain: { color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/25", icon: ArrowRight, desc: "Transitioning to a new field" },
-    excel_current: { color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/25", icon: TrendingUp, desc: "Growing in current domain" },
-    get_job: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/25", icon: Briefcase, desc: "Seeking employment" },
-    promotion: { color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/25", icon: Star, desc: "Aiming for a higher role" },
-    side_income: { color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/25", icon: Zap, desc: "Building additional income stream" },
-  };
-  const c = config[goal] ?? { color: "text-white/50", bg: "bg-white/5", border: "border-white/10", icon: Target, desc: "" };
-  const Icon = c.icon;
-  return (
-    <div className={`flex items-center gap-3 p-4 rounded-xl border ${c.bg} ${c.border}`}>
-      <div className={`w-9 h-9 rounded-lg ${c.bg} border ${c.border} flex items-center justify-center shrink-0`}>
-        <Icon size={16} className={c.color} />
-      </div>
-      <div>
-        <p className={`text-sm font-semibold ${c.color}`}>{label(goal)}</p>
-        <p className="text-xs text-white/40">{c.desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function RiskMeter({ level }: { level: string }) {
-  const steps = ["low", "medium", "high"];
-  const idx = steps.indexOf(level);
-  const colors = ["bg-green-500", "bg-amber-500", "bg-red-500"];
-  return (
-    <div className="flex items-center gap-1.5">
-      {steps.map((s, i) => (
-        <div key={s} className={`h-2 flex-1 rounded-full transition-all ${i <= idx ? colors[idx] : "bg-white/8"}`} />
-      ))}
-    </div>
-  );
-}
-
-function AvailabilityBar({ code }: { code: string }) {
-  const map: Record<string, number> = { lt5: 15, "5_10": 40, "10_20": 70, gt20: 100 };
-  const pct = map[code] ?? 0;
-  return (
-    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-      <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.8 }} className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" />
+      <p className="text-[10px] font-semibold uppercase tracking-wider"
+        style={{ color: "rgb(var(--foreground-faint))" }}>{label}</p>
+      <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))" }}>{value}</p>
     </div>
   );
 }
 
 export default function ProfilePage() {
-  const { profile, completion, isGated, updateProfile } = useProfile();
-  const [chatDone, setChatDone] = useState(false);
+  const router = useRouter();
+  const { profile: storeProfile, completion, isGated } = useStore();
+  const [ap, setAp]       = useState<ApiProfile | null>(null);
+  const [gap, setGap]     = useState<SkillGapData | null>(null);
+  const [careers, setCareers] = useState<CareerPathResult[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showChat, setShowChat] = useState(false);
-  const [apiProfile, setApiProfile] = useState<ReturnType<typeof Object.assign> | null>(null);
+  const [chatDone, setChatDone] = useState(false);
 
-  // Fetch full profile from backend to get rich fields
   useEffect(() => {
-    apiGetProfile().then((p) => {
-      setApiProfile(p);
-      // Sync rich fields into context
-      updateProfile({
-        thinking_style: p.thinking_style || "",
-        interests: p.interests || [],
-        skill_levels: p.skill_levels || {},
-        certifications: p.certifications || [],
-        target_role: p.target_role || "",
-        risk_tolerance: p.risk_tolerance || "",
-        learning_style: p.learning_style || "",
-        side_income_type: p.side_income_type || "",
-        experience_years: p.experience_years || "",
-        backend_completion: p.profile_completion,
-      });
-    }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!getAccessToken()) { router.replace("/login"); return; }
+    Promise.all([
+      apiGetProfile().then(setAp).catch(() => {}),
+      apiGetSkillGap().then(setGap).catch(() => {}),
+      apiGetCareers().then(setCareers).catch(() => {}),
+    ]).finally(() => setLoading(false));
+  }, []); // eslint-disable-line
 
-  const missing = REQUIRED_FIELDS.filter((f: keyof ProfileData) => {
-    const v = profile[f];
-    return Array.isArray(v) ? v.length === 0 : String(v ?? "").trim() === "";
-  });
+  const handleChatComplete = async () => {
+    setChatDone(true); setShowChat(false);
+    try { setAp(await apiGetProfile()); } catch {}
+  };
 
-  // Use apiProfile for rich fields, fall back to context
-  const ap = apiProfile;
-  const skillLevels: Record<string, string> = ap?.skill_levels || profile.skill_levels || {};
-  const skills: string[] = ap?.skills || profile.skills || [];
-  const certifications: string[] = ap?.certifications || profile.certifications || [];
-  const interests: string[] = ap?.interests || profile.interests || [];
-  const thinkingStyle = ap?.thinking_style || profile.thinking_style || "";
-  const targetRole = ap?.target_role || profile.target_role || "";
-  const riskTolerance = ap?.risk_tolerance || profile.risk_tolerance || "";
-  const learningStyle = ap?.learning_style || profile.learning_style || "";
-  const sideIncomeType = ap?.side_income_type || profile.side_income_type || "";
-  const experienceYears = ap?.experience_years || profile.experience_years || "";
+  const p = ap;
+  const comp = p?.profile_completion ?? completion;
+  const missing = REQUIRED.filter(f => { const v = p?.[f]; return !v || String(v).trim() === ""; });
+  const filled  = REQUIRED.filter(f => { const v = p?.[f]; return v && String(v).trim() !== ""; });
+  const skills: string[] = p?.skills ?? [];
+  const skillLevels = p?.skill_levels ?? {};
+  const topCareer = careers[0];
+  const initials  = (p?.name || storeProfile?.username || "U").charAt(0).toUpperCase();
+  const compColor = comp >= 80 ? "rgb(var(--accent))" : "rgb(var(--warning))";
 
-  const displayName = profile.name || ap?.name || "—";
-  const goalCode = profile.goal || ap?.goal || "";
+  const summary = (() => {
+    if (!p?.name) return "";
+    let s = `${p.name} is a ${lbl(p.experience_level) || ""} ${p.profession || "professional"}`;
+    if (p.goal) s += ` ${p.goal === "get_job" ? "seeking employment" : p.goal === "promotion" ? "aiming for promotion" : p.goal === "switch_domain" ? "transitioning domains" : "growing in their field"}`;
+    if (p.target_role) s += ` targeting ${p.target_role}`;
+    s += ".";
+    if (skills.length) s += ` Core strengths: ${skills.slice(0, 3).join(", ")}.`;
+    if (gap?.gap_skills?.length) s += ` Priority gaps: ${gap.gap_skills.slice(0, 2).map(g => g.skill).join(", ")}.`;
+    return s;
+  })();
 
   return (
-    <div className="flex min-h-screen bg-[#050508]">
+    <div className="flex min-h-screen" style={{ background: "rgb(var(--background))" }}>
       <Sidebar />
-
       <main className="flex-1 overflow-y-auto">
-        <div className="fixed top-0 right-0 w-[400px] h-[400px] bg-purple-600/5 rounded-full blur-[100px] pointer-events-none" />
-
         <div className="max-w-4xl mx-auto px-6 py-8">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-            <h1 className="text-2xl font-bold text-white mb-1">Career Profile</h1>
-            <p className="text-sm text-white/40">
-              {isGated ? "Complete your profile to unlock all features." : "Your full mentor-view profile — everything your AI needs to guide you."}
+
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
+            <p className="text-label mb-1 flex items-center gap-1.5" style={{ color: "rgb(var(--primary))" }}>
+              <User size={11} /> Career Profile
+            </p>
+            <h1 className="text-display">Your Profile</h1>
+            <p className="text-body mt-1">
+              {isGated ? "Complete your profile to unlock all AI features." : "Your AI mentor profile — everything is real and dynamic."}
             </p>
           </motion.div>
 
-          {/* ── Header card ── */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="glass glow-border rounded-2xl p-6 mb-5">
-            <div className="flex items-start gap-5 flex-wrap">
-              <CompletionRing pct={completion} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-xl font-bold text-white">{displayName}</h2>
-                  {completion >= 80 && <CheckCircle2 size={16} className="text-green-400" />}
-                </div>
-                <p className="text-sm text-white/50 mb-1">
-                  {label(profile.level || ap?.experience_level)} {profile.profession || ap?.profession ? `· ${profile.profession || ap?.profession}` : ""}
-                  {experienceYears ? ` · ${experienceYears} yrs exp` : ""}
-                </p>
-                {profile.bio || ap?.bio ? (
-                  <p className="text-xs text-white/40 leading-relaxed max-w-lg">{profile.bio || ap?.bio}</p>
-                ) : null}
-                {missing.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {missing.map((f) => (
-                      <span key={f as string} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                        {String(f)} missing
-                      </span>
-                    ))}
+          {/* ── Hero card ── */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <Card className="mb-5">
+              <div className="flex items-start gap-6 flex-wrap">
+
+                {/* Avatar + ring */}
+                <div className="relative shrink-0">
+                  {/* Progress ring */}
+                  <svg width={96} height={96} className="-rotate-90 absolute inset-0">
+                    <circle cx={48} cy={48} r={42} fill="none" stroke="rgb(var(--border))" strokeWidth={5} />
+                    <motion.circle cx={48} cy={48} r={42} fill="none"
+                      stroke={compColor} strokeWidth={5} strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 42}
+                      initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
+                      animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - comp / 100) }}
+                      transition={{ duration: 1.2, ease: "easeOut" }} />
+                  </svg>
+                  {/* Avatar */}
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center text-2xl font-black relative z-10 m-0"
+                    style={{
+                      background: "rgb(var(--primary) / 0.14)",
+                      border: "3px solid rgb(var(--primary) / 0.25)",
+                      color: "rgb(var(--primary))",
+                    }}>
+                    {initials}
                   </div>
-                )}
+                  {/* % badge */}
+                  <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[10px] font-black z-20"
+                    style={{ background: compColor, color: "white" }}>
+                    {comp}%
+                  </div>
+                </div>
+
+                {/* Name + fields */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-heading text-xl">{p?.name || storeProfile?.username || "—"}</h2>
+                    {comp >= 80 && <CheckCircle2 size={16} style={{ color: "rgb(var(--accent))" }} />}
+                  </div>
+                  <p className="text-caption mb-1">
+                    {lbl(p?.experience_level)}{p?.profession ? ` · ${p.profession}` : ""}
+                    {p?.experience_years ? ` · ${p.experience_years} yrs exp` : ""}
+                  </p>
+                  {p?.target_role && (
+                    <p className="text-xs font-semibold mb-3" style={{ color: "rgb(var(--primary))" }}>
+                      → Targeting: {p.target_role}
+                    </p>
+                  )}
+
+                  {/* Field audit chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {filled.map(f => {
+                      const cfg = FIELD_LABELS[f];
+                      return (
+                        <span key={f} className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold"
+                          style={{ background: "rgb(var(--accent) / 0.10)", color: "rgb(var(--accent))", border: "1px solid rgb(var(--accent) / 0.22)" }}>
+                          <CheckCircle2 size={9} />{cfg?.label}
+                        </span>
+                      );
+                    })}
+                    {missing.map(f => {
+                      const cfg = FIELD_LABELS[f];
+                      return (
+                        <button key={f} onClick={() => setShowChat(true)}
+                          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-105"
+                          style={{ background: "rgb(var(--warning) / 0.12)", color: "rgb(var(--warning))", border: "1px solid rgb(var(--warning) / 0.28)" }}>
+                          <AlertCircle size={9} />{cfg?.label} missing
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* LinkedIn + complete CTA */}
+                <div className="flex flex-col gap-2 shrink-0">
+                  {p?.linkedin && (
+                    <a href={p.linkedin} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-105"
+                      style={{ background: "rgb(var(--primary) / 0.10)", color: "rgb(var(--primary))", border: "1px solid rgb(var(--primary-border))" }}>
+                      <Globe size={12} /> LinkedIn
+                    </a>
+                  )}
+                  {missing.length > 0 && (
+                    <button onClick={() => setShowChat(p2 => !p2)}
+                      className="btn-primary text-xs py-1.5 px-3">
+                      <Bot size={12} /> {showChat ? "Close AI" : "Complete Profile"}
+                    </button>
+                  )}
+                </div>
               </div>
-              {(profile.linkedin || ap?.linkedin) && (
-                <a href={profile.linkedin || ap?.linkedin} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors shrink-0">
-                  <Globe size={13} /> LinkedIn
-                </a>
-              )}
-            </div>
+            </Card>
           </motion.div>
 
-          {/* ── AI Chatbot (shown when incomplete) ── */}
+          {/* ── AI Chat accordion ── */}
           <AnimatePresence>
             {(isGated || (!chatDone && missing.length > 0)) && (
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }} transition={{ delay: 0.08 }}
-                className="glass glow-border rounded-2xl overflow-hidden mb-5">
-                <button onClick={() => setShowChat((p) => !p)}
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-600/30 border border-purple-500/30 flex items-center justify-center">
-                      <Bot size={15} className="text-purple-400" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-white">AI Profile Assistant</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                        <span className="text-xs text-white/40">
-                          {missing.length > 0 ? `${missing.length} fields to complete` : "Collecting goal details"}
-                        </span>
+                exit={{ opacity: 0, y: -8 }} className="mb-5">
+                <Card className="overflow-hidden !p-0">
+                  <button onClick={() => setShowChat(p2 => !p2)}
+                    className="w-full flex items-center justify-between px-5 py-4 transition-colors hover:bg-[rgb(var(--primary)/0.03)]"
+                    style={{ borderBottom: showChat ? "1px solid rgb(var(--border))" : "none" }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                        style={{ background: "rgb(var(--primary) / 0.12)", border: "1px solid rgb(var(--primary-border))" }}>
+                        <Bot size={16} style={{ color: "rgb(var(--primary))" }} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold" style={{ color: "rgb(var(--foreground))" }}>AI Profile Assistant</p>
+                        <p className="text-[11px]" style={{ color: "rgb(var(--foreground-muted))" }}>
+                          {missing.length} field{missing.length !== 1 ? "s" : ""} missing — click to complete with AI
+                        </p>
                       </div>
                     </div>
-                  </div>
-                  {showChat ? <ChevronUp size={15} className="text-white/40" /> : <ChevronDown size={15} className="text-white/40" />}
-                </button>
-                <AnimatePresence>
-                  {showChat && (
-                    <motion.div initial={{ height: 0 }} animate={{ height: 420 }} exit={{ height: 0 }}
-                      className="overflow-hidden border-t border-white/5">
-                      <ProfileChatbot onComplete={() => { setChatDone(true); setShowChat(false); }} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    {showChat
+                      ? <ChevronUp size={15} style={{ color: "rgb(var(--foreground-faint))" }} />
+                      : <ChevronDown size={15} style={{ color: "rgb(var(--foreground-faint))" }} />}
+                  </button>
+                  <AnimatePresence>
+                    {showChat && (
+                      <motion.div initial={{ height: 0 }} animate={{ height: 420 }} exit={{ height: 0 }}
+                        className="overflow-hidden">
+                        <ProfileChatbot onComplete={handleChatComplete} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* ── Main grid ── */}
+          {/* ── AI Summary ── */}
+          {summary && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              className="mb-5">
+              <Card>
+                <SLabel icon={Brain} text="AI Profile Summary" color="rgb(var(--primary))" />
+                <div className="flex gap-3 items-start p-4 rounded-xl"
+                  style={{ background: "rgb(var(--primary) / 0.05)", border: "1px solid rgb(var(--primary-border))" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgb(var(--primary) / 0.12)", border: "1px solid rgb(var(--primary-border))" }}>
+                    <Zap size={14} style={{ color: "rgb(var(--primary))" }} />
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground))" }}>{summary}</p>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── 2-col grid ── */}
           <div className="grid md:grid-cols-2 gap-4">
 
-            {/* Career Goal */}
-            {goalCode && (
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }} className="glass glow-border rounded-2xl p-5">
-                <p className="text-xs text-white/35 uppercase tracking-wider font-medium mb-3 flex items-center gap-2">
-                  <Target size={12} className="text-purple-400" /> Career Goal
-                </p>
-                <GoalBadge goal={goalCode} />
-                {targetRole && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-white/60">
-                    <ArrowRight size={13} className="text-purple-400 shrink-0" />
-                    <span>Target: <span className="text-white/80 font-medium">{targetRole}</span></span>
-                  </div>
-                )}
-                {sideIncomeType && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-white/60">
-                    <Zap size={13} className="text-cyan-400 shrink-0" />
-                    <span>Via: <span className="text-white/80 font-medium">{sideIncomeType}</span></span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
             {/* Background */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }} className="glass glow-border rounded-2xl p-5">
-              <p className="text-xs text-white/35 uppercase tracking-wider font-medium mb-3 flex items-center gap-2">
-                <User size={12} className="text-purple-400" /> Background
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <StatPill icon={GraduationCap} label="Education" value={label(profile.education || ap?.education)} color="text-blue-400" />
-                <StatPill icon={Briefcase} label="Status" value={label(profile.status || ap?.current_status)} color="text-green-400" />
-                <StatPill icon={TrendingUp} label="Level" value={label(profile.level || ap?.experience_level)} color="text-purple-400" />
-                <StatPill icon={Star} label="Experience" value={experienceYears ? `${experienceYears} years` : ""} color="text-amber-400" />
-              </div>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}>
+              <Card>
+                <SLabel icon={GraduationCap} text="Background" color="rgb(var(--primary))" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Tile icon={GraduationCap} label="Education"   value={lbl(p?.education)}        color="rgb(var(--primary))" />
+                  <Tile icon={Briefcase}     label="Status"      value={lbl(p?.current_status)}   color="rgb(var(--accent))" />
+                  <Tile icon={TrendingUp}    label="Level"       value={lbl(p?.experience_level)} color="rgb(var(--primary))" />
+                  <Tile icon={Star}          label="Experience"  value={p?.experience_years ? `${p.experience_years} yrs` : ""} color="rgb(var(--warning))" />
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Behavioral */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+              <Card>
+                <SLabel icon={Brain} text="Behavioral Profile" color="rgb(var(--primary))" />
+                {(p?.thinking_style || p?.learning_style) ? (
+                  <div className="flex flex-col gap-4">
+                    {p?.thinking_style && (
+                      <div>
+                        <p className="text-label mb-2">Thinking Style</p>
+                        <span className="badge badge-primary">{p.thinking_style}</span>
+                      </div>
+                    )}
+                    {p?.learning_style && (
+                      <div>
+                        <p className="text-label mb-2 flex items-center gap-1"><BookOpen size={9} />Learning Style</p>
+                        <span className="badge badge-accent">{lbl(p.learning_style)}</span>
+                      </div>
+                    )}
+                    {p?.interests && p.interests.length > 0 && (
+                      <div>
+                        <p className="text-label mb-2">Interests</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {p.interests.map(i => (
+                            <span key={i} className="badge"
+                              style={{ background: "rgb(var(--background-alt))", color: "rgb(var(--foreground-muted))", border: "1px solid rgb(var(--border))" }}>
+                              {i}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-caption italic">Complete the assessment to populate this section.</p>
+                )}
+              </Card>
             </motion.div>
 
             {/* Skills */}
             {skills.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.14 }} className="glass glow-border rounded-2xl p-5 md:col-span-2">
-                <p className="text-xs text-white/35 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-                  <BarChart2 size={12} className="text-purple-400" /> Skills Assessment
-                </p>
-                <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
-                  {skills.map((s) => (
-                    <SkillBar key={s} skill={s} level={skillLevels[s]} />
-                  ))}
-                </div>
-                {certifications.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Award size={10} /> Certifications
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {certifications.map((c) => (
-                        <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">{c}</span>
-                      ))}
-                    </div>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+                className="md:col-span-2">
+                <Card>
+                  <SLabel icon={BarChart3} text="Skills Assessment" color="rgb(var(--primary))" />
+                  <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
+                    {skills.map(s => {
+                      const lvl = skillLevels[s];
+                      const pct = lvl === "expert" ? 92 : lvl === "advanced" ? 76 : lvl === "intermediate" ? 56 : 34;
+                      const barColor = pct >= 75 ? "rgb(var(--accent))" : pct >= 50 ? "rgb(var(--primary))" : "rgb(var(--warning))";
+                      return (
+                        <div key={s} className="flex items-center gap-3">
+                          <span className="text-xs font-medium w-28 shrink-0 truncate" style={{ color: "rgb(var(--foreground))" }}>{s}</span>
+                          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgb(var(--border))" }}>
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.8 }} className="h-full rounded-full"
+                              style={{ background: barColor }} />
+                          </div>
+                          {lvl && (
+                            <span className="text-[10px] font-semibold w-20 shrink-0"
+                              style={{ color: barColor }}>{lvl}</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </Card>
               </motion.div>
             )}
 
-            {/* Behavioral & Learning Profile */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16 }} className="glass glow-border rounded-2xl p-5">
-              <p className="text-xs text-white/35 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-                <Brain size={12} className="text-purple-400" /> Behavioral Profile
-              </p>
-              <div className="flex flex-col gap-4">
-                {thinkingStyle && (
+            {/* Skill Gap */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
+              className="md:col-span-2">
+              <Card>
+                <SLabel icon={Target} text="Skill Gap Analysis" color="rgb(var(--warning))" />
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1.5">Thinking Style</p>
-                    <span className="text-xs px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">{thinkingStyle}</span>
-                  </div>
-                )}
-                {learningStyle && (
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <BookOpen size={10} /> Learning Style
+                    <p className="text-label mb-3 flex items-center gap-1.5" style={{ color: "rgb(var(--accent))" }}>
+                      <CheckCircle2 size={9} /> Your Strengths
                     </p>
-                    <span className="text-xs px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">{label(learningStyle)}</span>
-                  </div>
-                )}
-                {interests.length > 0 && (
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1.5">Interests</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {interests.map((i) => (
-                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/8 text-white/50">{i}</span>
-                      ))}
+                    <div className="flex flex-col gap-2">
+                      {skills.length > 0 ? skills.slice(0, 6).map(s => (
+                        <div key={s} className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                          style={{ background: "rgb(var(--accent) / 0.06)", border: "1px solid rgb(var(--accent) / 0.15)" }}>
+                          <CheckCircle2 size={12} style={{ color: "rgb(var(--accent))" }} />
+                          <span className="text-sm font-medium" style={{ color: "rgb(var(--foreground))" }}>{s}</span>
+                        </div>
+                      )) : <p className="text-caption italic">No skills mapped yet.</p>}
                     </div>
                   </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Risk & Availability */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }} className="glass glow-border rounded-2xl p-5">
-              <p className="text-xs text-white/35 uppercase tracking-wider font-medium mb-4 flex items-center gap-2">
-                <Shield size={12} className="text-purple-400" /> Risk & Availability
-              </p>
-              <div className="flex flex-col gap-5">
-                {riskTolerance && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] text-white/30 uppercase tracking-wider">Risk Tolerance</p>
-                      <span className={`text-xs font-medium ${riskTolerance === "high" ? "text-red-400" : riskTolerance === "medium" ? "text-amber-400" : "text-green-400"}`}>
-                        {label(riskTolerance)}
-                      </span>
+                    <p className="text-label mb-3 flex items-center gap-1.5" style={{ color: "rgb(var(--danger))" }}>
+                      <XCircle size={9} /> Missing Skills
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {gap?.gap_skills?.length ? gap.gap_skills.slice(0, 6).map(g => (
+                        <div key={g.skill} className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                          style={{ background: "rgb(var(--danger) / 0.06)", border: "1px solid rgb(var(--danger) / 0.15)" }}>
+                          <XCircle size={12} style={{ color: "rgb(var(--danger))" }} />
+                          <span className="flex-1 text-sm font-medium" style={{ color: "rgb(var(--foreground))" }}>{g.skill}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{
+                              background: g.priority === "critical" ? "rgb(var(--danger) / 0.12)" : "rgb(var(--warning) / 0.12)",
+                              color: g.priority === "critical" ? "rgb(var(--danger))" : "rgb(var(--warning))",
+                              border: `1px solid ${g.priority === "critical" ? "rgb(var(--danger) / 0.25)" : "rgb(var(--warning) / 0.25)"}`,
+                            }}>{g.priority}</span>
+                        </div>
+                      )) : <p className="text-caption italic">Run skill gap analysis to see gaps.</p>}
                     </div>
-                    <RiskMeter level={riskTolerance} />
-                  </div>
-                )}
-                {(profile.availability || ap?.availability) && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] text-white/30 uppercase tracking-wider flex items-center gap-1.5">
-                        <Clock size={10} /> Weekly Availability
-                      </p>
-                      <span className="text-xs text-blue-400">{label(profile.availability || ap?.availability)}</span>
-                    </div>
-                    <AvailabilityBar code={profile.availability || ap?.availability} />
-                  </div>
-                )}
-                {/* Mentor readiness summary */}
-                <div className="pt-3 border-t border-white/5">
-                  <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Sparkles size={10} className="text-purple-400" /> Mentor Readiness
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {[
-                      { label: "Profile complete", done: completion >= 80 },
-                      { label: "Goal defined", done: !!goalCode },
-                      { label: "Skills mapped", done: skills.length > 0 },
-                      { label: "Risk assessed", done: !!riskTolerance },
-                      { label: "Learning style set", done: !!learningStyle },
-                    ].map(({ label: l, done }) => (
-                      <div key={l} className="flex items-center gap-2">
-                        {done
-                          ? <CheckCircle2 size={12} className="text-green-400 shrink-0" />
-                          : <AlertCircle size={12} className="text-white/20 shrink-0" />}
-                        <span className={`text-xs ${done ? "text-white/60" : "text-white/25"}`}>{l}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              </div>
+              </Card>
+            </motion.div>
+
+            {/* Career Direction */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+              className="md:col-span-2">
+              <Card>
+                <SLabel icon={TrendingUp} text="Career Direction" color="rgb(var(--accent))" />
+                {topCareer ? (
+                  <div className="p-4 rounded-xl"
+                    style={{ background: "rgb(var(--primary) / 0.05)", border: "1px solid rgb(var(--primary-border))" }}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-heading">{topCareer.title}</p>
+                        <span className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: "rgb(var(--warning))" }}>
+                          <Star size={9} /> Top AI Recommendation
+                        </span>
+                      </div>
+                      <span className="text-sm font-black px-3 py-1 rounded-full"
+                        style={{ background: "rgb(var(--accent) / 0.10)", color: "rgb(var(--accent))", border: "1px solid rgb(var(--accent-border))" }}>
+                        {topCareer.match_score}% match
+                      </span>
+                    </div>
+                    <p className="text-caption leading-relaxed">{topCareer.description}</p>
+                    <div className="flex gap-3 mt-3">
+                      <a href="/dashboard/intelligence" className="btn-primary text-xs py-1.5 px-3">
+                        <TrendingUp size={12} /> View All Paths
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                      style={{ background: "rgb(var(--primary-muted))", border: "1px solid rgb(var(--primary-border))" }}>
+                      <TrendingUp size={24} style={{ color: "rgb(var(--primary))" }} />
+                    </div>
+                    <p className="text-body mb-3">Go to AI Intelligence to generate career predictions.</p>
+                    <a href="/dashboard/intelligence" className="btn-primary">
+                      <Award size={14} /> Predict Careers
+                    </a>
+                  </div>
+                )}
+              </Card>
             </motion.div>
 
           </div>
 
-          {/* ── Unlock banner ── */}
-          <AnimatePresence>
-            {!isGated && (
-              <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-                className="glass border border-green-500/30 rounded-2xl p-5 mt-5 flex items-center gap-4">
-                <CheckCircle2 size={22} className="text-green-400 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-white">All features unlocked</p>
-                  <p className="text-xs text-white/40 mt-0.5">Roadmap, Weekly Tasks & Progress tracking are active.</p>
-                </div>
-                <a href="/dashboard/roadmap" className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors shrink-0">
-                  View Roadmap <ArrowRight size={12} />
-                </a>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Unlock banner */}
+          {!isGated && (
+            <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+              className="mt-4 rounded-2xl p-4 flex items-center gap-4"
+              style={{ background: "rgb(var(--accent) / 0.07)", border: "1px solid rgb(var(--accent) / 0.22)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "rgb(var(--accent) / 0.12)", border: "1px solid rgb(var(--accent-border))" }}>
+                <CheckCircle2 size={18} style={{ color: "rgb(var(--accent))" }} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))" }}>All features unlocked</p>
+                <p className="text-caption mt-0.5">Roadmap, Tasks & Analytics are active.</p>
+              </div>
+              <a href="/dashboard/roadmap" className="btn-primary text-xs py-1.5 px-3 shrink-0">
+                View Roadmap <ArrowRight size={12} />
+              </a>
+            </motion.div>
+          )}
+
         </div>
       </main>
     </div>

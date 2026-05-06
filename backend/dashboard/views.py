@@ -1,6 +1,7 @@
 import logging
 from datetime import date, timedelta
 from django.utils import timezone
+from django.db.models import Sum
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -144,7 +145,7 @@ class DashboardView(APIView):
         streak = _compute_streak(request.user)
         ai_score = _compute_ai_score(request.user, profile)
         total_xp = ActivityLog.objects.filter(user=request.user).aggregate(
-            total=__import__("django.db.models", fromlist=["Sum"]).Sum("xp_earned")
+            total=Sum("xp_earned")
         )["total"] or 0
 
         insights = generate_insights(profile)
@@ -210,7 +211,7 @@ class DashboardStatsView(APIView):
         ai_score = _compute_ai_score(request.user, profile)
 
         total_xp = ActivityLog.objects.filter(user=request.user).aggregate(
-            total=__import__("django.db.models", fromlist=["Sum"]).Sum("xp_earned")
+            total=Sum("xp_earned")
         )["total"] or 0
 
         completed_weeks = WeeklyPlan.objects.filter(user=request.user, is_completed=True).count()
@@ -228,9 +229,7 @@ class DashboardStatsView(APIView):
             "total_weeks": total_weeks,
             "career_title": career_title,
             "profile_completion": profile.profile_completion,
-            "roadmap_pct": _roadmap_progress(request.user, None) if not career_title else round(
-                (done_tasks / max(total_tasks, 1)) * 100
-            ),
+            "roadmap_pct": round((done_tasks / max(total_tasks, 1)) * 100) if total_tasks > 0 else 0,
         })
 
 

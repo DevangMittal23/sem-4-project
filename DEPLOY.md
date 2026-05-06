@@ -1,125 +1,150 @@
-# Deploying AI Career Mentor on Render
+# Deployment Guide — AI Career Mentor
 
-## Prerequisites
-- GitHub account
-- Render account (render.com — free tier works)
-- API keys: Groq, Gemini, Serper (optional)
+## Architecture
 
----
-
-## Step 1 — Push to GitHub
-
-```bash
-cd d:\Desktop\careerboost-app
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ai-career-mentor.git
-git push -u origin main
+```
+Frontend (Next.js)  →  Backend (Django + DRF)  →  SQLite / PostgreSQL
+                              ↓
+                    Groq API  |  Gemini API  |  Adzuna API
 ```
 
 ---
 
-## Step 2 — Deploy via render.yaml (Recommended)
+## Local Development
 
-1. Go to https://dashboard.render.com
-2. Click **New** → **Blueprint**
+### 1. Backend
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+```
+
+Create `.env` in `backend/`:
+```
+GROQ_API_KEY=your_groq_key
+GEMINI_API_KEY=your_gemini_key
+ADZUNA_APP_ID=your_adzuna_id
+ADZUNA_APP_KEY=your_adzuna_key
+DJANGO_SECRET_KEY=your-secret-key
+DEBUG=True
+```
+
+### 2. Frontend
+
+```bash
+# From project root
+npm install
+npm run dev
+```
+
+Create `.env.local` in project root:
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
+GROQ_API_KEY=your_groq_key
+```
+
+---
+
+## Production Deployment (Render.com)
+
+### Option A: Using render.yaml (Recommended)
+
+1. Push your code to GitHub
+2. Go to [render.com](https://render.com) → New → Blueprint
 3. Connect your GitHub repo
-4. Render will detect `render.yaml` and create all 3 services automatically:
-   - `ai-career-mentor-backend` (Django)
-   - `ai-career-mentor` (Next.js)
-   - `ai-career-mentor-db` (PostgreSQL)
+4. Render will auto-detect `render.yaml` and create all services
+5. Set the following environment variables manually in Render dashboard:
+   - `GROQ_API_KEY`
+   - `GEMINI_API_KEY`
+   - `ADZUNA_APP_ID`
+   - `ADZUNA_APP_KEY`
 
-5. After services are created, add these **Environment Variables** to the backend service:
-   - `GROQ_API_KEY` = your key from console.groq.com
-   - `GEMINI_API_KEY` = your key from aistudio.google.com
-   - `SERPER_API_KEY` = your key from serper.dev (optional)
+### Option B: Manual Setup
 
-6. Add to the frontend service:
-   - `GROQ_API_KEY` = same Groq key (used by Next.js API route)
+#### Backend Service
+- **Type**: Web Service
+- **Runtime**: Python 3
+- **Root Directory**: `backend`
+- **Build Command**: `./build.sh`
+- **Start Command**: `gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
 
----
-
-## Step 3 — Manual Deploy (Alternative)
-
-### 3a. Deploy Django Backend
-
-1. Render Dashboard → **New** → **Web Service**
-2. Connect repo, set **Root Directory** to `backend`
-3. Settings:
-   - **Runtime**: Python 3
-   - **Build Command**: `./build.sh`
-   - **Start Command**: `gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
-   - **Plan**: Free
-
-4. Environment Variables:
-   ```
-   DJANGO_SECRET_KEY    = (click "Generate" for a random value)
-   DEBUG                = False
-   ALLOWED_HOSTS        = .onrender.com
-   DATABASE_URL         = (auto-filled when you attach the DB below)
-   FRONTEND_URL         = https://ai-career-mentor.onrender.com
-   GROQ_API_KEY         = your_key
-   GEMINI_API_KEY       = your_key
-   SERPER_API_KEY       = your_key
-   ```
-
-5. Add a **PostgreSQL** database:
-   - Render Dashboard → **New** → **PostgreSQL**
-   - Name: `ai-career-mentor-db`, Plan: Free
-   - Copy the **Internal Database URL**
-   - Paste it as `DATABASE_URL` in the backend service env vars
-
-### 3b. Deploy Next.js Frontend
-
-1. Render Dashboard → **New** → **Web Service**
-2. Connect same repo, **Root Directory** = `.` (root)
-3. Settings:
-   - **Runtime**: Node
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm start`
-   - **Plan**: Free
-
-4. Environment Variables:
-   ```
-   NEXT_PUBLIC_API_URL  = https://ai-career-mentor-backend.onrender.com/api
-   GROQ_API_KEY         = your_key
-   ```
-
----
-
-## Step 4 — Update CORS after deploy
-
-Once both services are live, update the backend's `FRONTEND_URL` env var with the actual frontend URL:
+Environment variables:
 ```
-FRONTEND_URL = https://ai-career-mentor.onrender.com
-```
-Render will auto-redeploy.
-
----
-
-## URLs after deployment
-
-| Service  | URL |
-|----------|-----|
-| Frontend | https://ai-career-mentor.onrender.com |
-| Backend API | https://ai-career-mentor-backend.onrender.com/api |
-| Admin panel | https://ai-career-mentor-backend.onrender.com/admin |
-
----
-
-## Create admin user after deploy
-
-In Render backend service → **Shell**:
-```bash
-python manage.py createsuperuser
+DJANGO_SECRET_KEY=<generate-a-strong-secret>
+DEBUG=False
+ALLOWED_HOSTS=.onrender.com
+DATABASE_URL=<from-render-postgres>
+FRONTEND_URL=https://your-frontend.onrender.com
+GROQ_API_KEY=<your-key>
+GEMINI_API_KEY=<your-key>
+ADZUNA_APP_ID=<your-id>
+ADZUNA_APP_KEY=<your-key>
 ```
 
+#### Frontend Service
+- **Type**: Web Service
+- **Runtime**: Node
+- **Root Directory**: `.` (project root)
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm start`
+
+Environment variables:
+```
+NEXT_PUBLIC_API_URL=https://your-backend.onrender.com/api
+GROQ_API_KEY=<your-key>
+```
+
+#### PostgreSQL Database
+- Create a free PostgreSQL database on Render
+- Copy the `DATABASE_URL` connection string to the backend service
+
 ---
 
-## Notes
+## API Keys Setup
 
-- Free tier services **spin down after 15 min of inactivity** — first request takes ~30s to wake up
-- SQLite is used locally; PostgreSQL is used on Render automatically via `DATABASE_URL`
-- All migrations run automatically in `build.sh`
+### Groq API (Free)
+1. Go to [console.groq.com](https://console.groq.com)
+2. Create account → API Keys → Create new key
+3. Model used: `llama-3.3-70b-versatile`
+
+### Gemini API (Free tier available)
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Get API key → copy it
+3. Model used: `gemini-2.0-flash`
+
+### Adzuna API (Free)
+1. Go to [developer.adzuna.com](https://developer.adzuna.com)
+2. Register → Create application
+3. Copy `App ID` and `App Key`
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GROQ_API_KEY` | Yes | Groq LLM API key |
+| `GEMINI_API_KEY` | Yes | Google Gemini API key |
+| `ADZUNA_APP_ID` | Yes | Adzuna job search App ID |
+| `ADZUNA_APP_KEY` | Yes | Adzuna job search App Key |
+| `DJANGO_SECRET_KEY` | Yes (prod) | Django secret key |
+| `DATABASE_URL` | Yes (prod) | PostgreSQL connection string |
+| `DEBUG` | No | `True` for dev, `False` for prod |
+| `ALLOWED_HOSTS` | No | Comma-separated allowed hosts |
+| `FRONTEND_URL` | No | Frontend URL for CORS |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL |
+
+---
+
+## Post-Deployment Checklist
+
+- [ ] Backend health check: `GET /api/auth/user/status/` returns 401 (not 500)
+- [ ] CORS configured for frontend URL
+- [ ] Database migrations applied
+- [ ] Static files collected
+- [ ] All API keys set in environment
+- [ ] Frontend `NEXT_PUBLIC_API_URL` points to backend

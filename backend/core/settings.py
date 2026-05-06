@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production")
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 INSTALLED_APPS = [
@@ -84,7 +84,11 @@ AUTH_USER_MODEL = "accounts.User"
 # ── Static files (WhiteNoise) ─────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Use simple storage locally to avoid needing collectstatic
+if os.environ.get("DATABASE_URL"):
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+else:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # ── DRF ───────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
@@ -115,6 +119,15 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 ADZUNA_APP_ID  = os.environ.get("ADZUNA_APP_ID",  "e8f35901")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY", "c0f126251d3d80b02f3a1a8b2035b1c8")
+
+# ── Production security (Render only — only when DATABASE_URL is set) ─────────
+if os.environ.get("DATABASE_URL"):
+    SECURE_SSL_REDIRECT          = True
+    SECURE_PROXY_SSL_HEADER      = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_HSTS_SECONDS          = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE        = True
+    CSRF_COOKIE_SECURE           = True
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {

@@ -15,6 +15,7 @@ from .gemini_service import (
 )
 from .search_service import get_market_data
 from .adzuna_service import fetch_jobs, extract_skills, calculate_skill_gap, extract_salary_summary
+from .workflow_service import run_post_assessment_pipeline
 
 logger = logging.getLogger("ai_engine")
 
@@ -35,24 +36,44 @@ class AssessmentChatView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         user_message = request.data.get("message", "")
-        history = request.data.get("history", [])
-        result = assessment_chat(history, user_message)
+        history      = request.data.get("history", [])
+        result       = assessment_chat(history, user_message)
 
+        pipeline_result = {}
         if result["is_complete"]:
+            # Extract profile from conversation
             extracted = extract_profile_from_history(result["history"])
-            if extracted:
-                for field, value in extracted.items():
-                    if hasattr(profile, field) and value:
-                        setattr(profile, field, value)
-            profile.is_assessment_completed = True
-            profile.save()
-            logger.info("Assessment completed for %s", request.user.email)
+            logger.info("Assessment extraction for %s: %s",
+                        request.user.email, {k: v for k, v in extracted.items() if v})
+
+            # Run full pipeline: profile save → skill gap → career → tasks
+            try:
+                pipeline_result = run_post_assessment_pipeline(request.user, extracted)
+                logger.info("Pipeline complete for %s: %s", request.user.email, pipeline_result)
+            except Exception as e:
+                logger.error("Pipeline error for %s: %s", request.user.email, e)
+                # Fallback: at minimum mark assessment complete
+                profile.is_assessment_completed = True
+                profile.save()
+
+            # Refresh profile_completion after pipeline
+            profile.refresh_from_db()
+
+        # Estimate mid-assessment progress based on conversation turns (profile not saved yet)
+        # Assessment asks ~10 questions; each user turn ≈ 10% progress
+        if not result["is_complete"]:
+            user_turns = sum(1 for m in result["history"] if m.get("role") == "user")
+            estimated_pct = min(95, user_turns * 10)
+        else:
+            estimated_pct = profile.profile_completion
 
         return Response({
-            "reply": result["reply"],
-            "is_complete": result["is_complete"],
-            "history": result["history"],
-            "profile_completion": profile.profile_completion,
+            "reply":                   result["reply"],
+            "is_complete":             result["is_complete"],
+            "history":                 result["history"],
+            "profile_completion":      estimated_pct,
+            "is_assessment_completed": profile.is_assessment_completed,
+            "pipeline":                pipeline_result,
         })
 
 
@@ -173,6 +194,11 @@ class SkillGapAnalysisView(APIView):
 
 class CareerPredictionView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Return existing career paths without regenerating."""
+        paths = CareerPath.objects.filter(user=request.user)
+        return Response(CareerPathSerializer(paths, many=True).data)
 
     def post(self, request):
         profile, _ = UserProfile.objects.get_or_create(user=request.user)

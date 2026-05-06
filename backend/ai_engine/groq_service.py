@@ -187,20 +187,20 @@ def assessment_chat(conversation_history: list[dict], user_message: str) -> dict
 Your goal is to understand the user's:
 1. Name and current profession
 2. Years of experience and role level (Fresher/Junior/Mid/Senior/Lead)
-3. Primary goal (Switch Domain / Excel in Current Domain)
-4. Target domain (if switching) or current domain
+3. Primary goal (Switch Domain / Excel in Current Domain / Get a Job / Promotion / Side Income)
+4. Target domain or current domain
 5. Top 3 technical skills
 6. Thinking style (Analytical/Creative/Collaborative/Structured)
-7. Education level
-8. Current status (Student/Employed/Freelance/Unemployed)
-9. Weekly availability (hours)
+7. Education level (High School/Diploma/Bachelor's/Master's/PhD/Self-taught)
+8. Current status (Student/Employed/Freelance/Unemployed/Career Break)
+9. Weekly availability (< 5 hrs / 5-10 hrs / 10-20 hrs / 20+ hrs)
 10. Career objective
 
 Rules:
 - Ask ONE question at a time
 - Be conversational and encouraging
 - Adapt follow-up questions based on answers
-- After collecting all 10 data points, respond with EXACTLY this JSON:
+- After collecting all 10 data points, respond with EXACTLY this JSON on its own line (no markdown, no code fences):
   {"assessment_complete": true, "summary": "brief summary of the user"}
 - Until complete, respond with just your next question as plain text
 - Do NOT number your questions
@@ -221,13 +221,19 @@ Rules:
         )
         reply = response.choices[0].message.content.strip()
 
+        # Strip markdown fences before checking for completion JSON
+        clean = reply.replace("```json", "").replace("```", "").strip()
+
         is_complete = False
         try:
-            parsed = json.loads(reply)
+            parsed = json.loads(clean)
             if parsed.get("assessment_complete"):
                 is_complete = True
+                reply = clean  # use clean version so extract_profile works
         except (json.JSONDecodeError, AttributeError):
-            pass
+            # Also check if JSON is embedded anywhere in the reply
+            if '"assessment_complete": true' in reply or "'assessment_complete': true" in reply:
+                is_complete = True
 
         updated_history = list(conversation_history)
         if user_message:
@@ -245,6 +251,7 @@ Rules:
 
 
 def extract_profile_from_history(conversation_history: list[dict]) -> dict:
+    """Extract structured profile data from the full conversation transcript."""
     transcript = "\n".join(
         f"{m['role'].upper()}: {m['content']}"
         for m in conversation_history
@@ -256,7 +263,7 @@ def extract_profile_from_history(conversation_history: list[dict]) -> dict:
 Conversation:
 {transcript}
 
-Return ONLY a valid JSON object with these exact keys (use empty string if not found):
+Return ONLY a valid JSON object — no markdown, no code fences, just raw JSON:
 {{
   "name": "",
   "profession": "",
@@ -275,7 +282,8 @@ Return ONLY a valid JSON object with these exact keys (use empty string if not f
 For experience_level use one of: fresher, junior, mid, senior, lead
 For goal use one of: switch_domain, excel_current, get_job, promotion, side_income
 For current_status use one of: student, employed, freelance, unemployed, career_break
-For availability use one of: lt5, 5_10, 10_20, gt20"""
+For availability use one of: lt5, 5_10, 10_20, gt20
+Fill every field you can find from the conversation. Do not leave fields empty if the answer is in the conversation."""
 
     try:
         client = _groq_client()
@@ -283,11 +291,41 @@ For availability use one of: lt5, 5_10, 10_20, gt20"""
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_tokens=400,
+            max_tokens=500,
         )
         raw = response.choices[0].message.content.strip()
-        json_match = raw[raw.find("{"):raw.rfind("}") + 1]
-        return json.loads(json_match)
+
+        # Strip markdown fences
+        raw = raw.replace("```json", "").replace("```", "").strip()
+
+        # Extract JSON object
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        if start == -1 or end == 0:
+            logger.warning("extract_profile: no JSON found in response")
+            return {}
+
+        result = json.loads(raw[start:end])
+
+        # Normalize choice fields so they match Django model choices
+        choice_fields = {
+            "experience_level": {"fresher": "fresher", "junior": "junior", "mid": "mid", "senior": "senior", "lead": "lead"},
+            "education": {"high school": "high_school", "diploma": "diploma", "bachelor": "bachelors", "master": "masters", "phd": "phd", "self": "self_taught"},
+            "current_status": {"student": "student", "employed": "employed", "freelance": "freelance", "unemployed": "unemployed", "career break": "career_break"},
+            "availability": {"less than 5": "lt5", "< 5": "lt5", "5 to 10": "5_10", "5-10": "5_10", "10 to 20": "10_20", "10-20": "10_20", "more than 20": "gt20", "20+": "gt20"},
+            "goal": {"switch": "switch_domain", "excel": "excel_current", "get a job": "get_job", "get job": "get_job", "promotion": "promotion", "side income": "side_income"},
+        }
+        for field, mapping in choice_fields.items():
+            raw_val = result.get(field, "")
+            if raw_val:
+                lower_val = str(raw_val).lower().strip()
+                for key, code in mapping.items():
+                    if key in lower_val:
+                        result[field] = code
+                        break
+
+        logger.info("extract_profile success: %s", {k: v for k, v in result.items() if v})
+        return result
     except Exception as e:
         logger.error("Groq extract_profile error: %s", e)
         return {}
