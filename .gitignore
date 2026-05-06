@@ -20,3 +20,8 @@ backend/media/
 *.log
 .vscode/
 .idea/
+.zencoder/
+.zenflow/
+
+# Gemini IDE
+.gemini/

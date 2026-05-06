@@ -84,11 +84,15 @@ AUTH_USER_MODEL = "accounts.User"
 # ── Static files (WhiteNoise) ─────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Use simple storage locally to avoid needing collectstatic
-if os.environ.get("DATABASE_URL"):
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-else:
-    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if os.environ.get("DATABASE_URL")
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        )
+    }
+}
 
 # ── DRF ───────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {

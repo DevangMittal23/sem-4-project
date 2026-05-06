@@ -24,8 +24,12 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: SERPER_API_KEY
-        sync: false
+      - key: ADZUNA_APP_ID
+        value: "e8f35901"
+      - key: ADZUNA_APP_KEY
+        value: "c0f126251d3d80b02f3a1a8b2035b1c8"
+      - key: PYTHON_VERSION
+        value: "3.12.3"
 
   # ── Next.js Frontend ────────────────────────────────────────────────────────
   - type: web
@@ -33,13 +37,15 @@ services:
     runtime: node
     rootDir: .
     buildCommand: "npm install && npm run build"
-    startCommand: "npm start"
+    startCommand: "node .next/standalone/server.js"
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: "https://ai-career-mentor-backend.onrender.com/api"
-      - key: GROQ_API_KEY
-        sync: false
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: PORT
+        value: "3000"
 
 # ── PostgreSQL Database ─────────────────────────────────────────────────────
 databases:

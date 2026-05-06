@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // standalone output only for production
-  ...(process.env.NODE_ENV === "production" ? { output: "standalone" } : {}),
+  // Standalone output — required for Render deployment
+  output: "standalone",
 
-  // Next.js 15: allow dev server to be accessed from any origin (fixes HTTPS/HTTP mismatch warning)
+  // Next.js 15: allow dev server from any origin (dev only, harmless in prod)
   allowedDevOrigins: ["localhost", "127.0.0.1", "0.0.0.0"],
 };
 
