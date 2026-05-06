@@ -51,8 +51,8 @@ class LoginView(APIView):
             return Response({"error": "Username and password are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         user = (
-            User.objects.filter(username=identifier).first()
-            or User.objects.filter(email=identifier.lower()).first()
+            User.objects.filter(username__iexact=identifier).first()
+            or User.objects.filter(email__iexact=identifier).first()
         )
 
         if not user or not user.check_password(password):
@@ -186,7 +186,7 @@ class GoogleAuthView(APIView):
 
         # ── Get or create user ────────────────────────────────────────────
         is_new_user = False
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(email__iexact=email).first()
 
         if not user:
             is_new_user = True

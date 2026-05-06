@@ -198,7 +198,7 @@ function LoginFormUI({ onSubmit, loading, serverError }: {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <InputField label="Username" icon={User} type="text" value={form.username} onChange={set("username")} error={errors.username} placeholder="your_username" />
+      <InputField label="Username or Email" icon={User} type="text" value={form.username} onChange={set("username")} error={errors.username} placeholder="your_username or you@example.com" />
       <InputField label="Password" icon={Lock} type={showPass ? "text" : "password"} value={form.password} onChange={set("password")} error={errors.password} placeholder="••••••••" rightSlot={<EyeToggle show={showPass} onToggle={() => setShowPass(p => !p)} />} />
       <AnimatePresence>
         {serverError && (
