@@ -61,7 +61,7 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# ── Database — PostgreSQL on Render ───────────────────────────────────────────
+# ── Database — PostgreSQL (Render) or SQLite (Local Fallback) ────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if DATABASE_URL:
@@ -72,8 +72,13 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
+    # Ensure psycopg (v3) compatibility if using Render's postgres:// prefix
+    if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+        DATABASES['default']['OPTIONS'] = {
+            'connect_timeout': 10,
+        }
 else:
-    # Fallback to SQLite only for local development
+    # Fallback to SQLite for local development when no DATABASE_URL is provided
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
