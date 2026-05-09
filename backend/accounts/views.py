@@ -75,6 +75,7 @@ class LoginView(APIView):
             "user": {"id": user.id, "email": user.email, "username": user.username},
             "is_assessment_completed": profile.is_assessment_completed,
             "profile_completion": profile.profile_completion,
+            "is_admin": user.is_staff,
         })
 
 
@@ -121,6 +122,7 @@ class UserStatusView(APIView):
             "user_id": request.user.id,
             "email": request.user.email,
             "username": request.user.username,
+            "is_admin": request.user.is_staff,
         }).data)
 
 
@@ -237,4 +239,5 @@ class GoogleAuthView(APIView):
             "is_new_user": is_new_user,
             "is_assessment_completed": profile.is_assessment_completed,
             "profile_completion": profile.profile_completion,
+            "is_admin": user.is_staff,
         })

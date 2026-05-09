@@ -72,6 +72,7 @@ export interface AuthResponse {
   user: { id: number; email: string; username: string };
   is_assessment_completed?: boolean;
   profile_completion?: number;
+  is_admin?: boolean;
 }
 
 export async function apiRegister(username: string, email: string, password: string): Promise<AuthResponse> {
@@ -99,6 +100,7 @@ export interface UserStatus {
   user_id: number;
   email: string;
   username: string;
+  is_admin: boolean;
 }
 
 export async function apiGetUserStatus(): Promise<UserStatus> {
@@ -447,3 +449,22 @@ export interface ActivityData {
 export async function apiGetActivity(weeks = 5): Promise<ActivityData> {
   return apiFetch<ActivityData>(`/dashboard/activity/?weeks=${weeks}`);
 }
+
+// ── Admin Dashboard ───────────────────────────────────────────────────────────
+
+export async function apiAdminStats(): Promise<any> {
+  return apiFetch<any>("/admin/stats/");
+}
+
+export async function apiAdminUsers(): Promise<any[]> {
+  return apiFetch<any[]>("/admin/users/");
+}
+
+export async function apiAdminUserDetail(id: string | number): Promise<any> {
+  return apiFetch<any>(`/admin/user/${id}/`);
+}
+
+export async function apiAdminAnalytics(): Promise<any> {
+  return apiFetch<any>("/admin/analytics/");
+}
+

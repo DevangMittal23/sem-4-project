@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, User, Map, ListChecks, BarChart3, Brain,
   MessageSquare, LogOut, ChevronLeft, ChevronRight, Sun, Moon,
-  Compass, Lock,
+  Compass, Lock, ShieldAlert,
 } from "lucide-react";
 
 /* ── Nav items ─────────────────────────────────────────────────────────────── */
@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/intelligence",   label: "Intelligence",icon: Brain,           public: false },
   { href: "/dashboard/progress",       label: "Analytics",   icon: BarChart3,       public: false },
   { href: "/dashboard/chatbot",        label: "AI Chat",     icon: MessageSquare,   public: true  },
-] as const;
+];
 
 /* ── Sidebar width constants ───────────────────────────────────────────────── */
 
@@ -114,7 +114,7 @@ export default function Sidebar() {
   const pathname  = usePathname();
   const router    = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
-  const { completion, isGated, sidebarOpen, setSidebarOpen, profile } = useStore();
+  const { completion, isGated, sidebarOpen, setSidebarOpen, profile, isAdmin } = useStore();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -191,6 +191,16 @@ export default function Sidebar() {
               active={active} locked={locked} collapsed={collapsed} />
           );
         })}
+        {isAdmin && (
+          <NavItem 
+            href="/admin" 
+            label="Admin Panel" 
+            icon={ShieldAlert}
+            active={pathname?.startsWith("/admin") ?? false} 
+            locked={false} 
+            collapsed={collapsed} 
+          />
+        )}
       </nav>
 
       {/* ── Footer actions ── */}

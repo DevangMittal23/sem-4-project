@@ -79,3 +79,4 @@ class UserStatusSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     email = serializers.EmailField()
     username = serializers.CharField()
+    is_admin = serializers.BooleanField(required=False)

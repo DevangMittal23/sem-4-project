@@ -33,6 +33,7 @@ export interface ProfileState {
   loading: boolean;
   syncing: boolean;
   sidebarOpen: boolean;
+  isAdmin: boolean;
 
   // Actions
   loadProfile: () => Promise<void>;
@@ -41,6 +42,8 @@ export interface ProfileState {
   syncAll: () => Promise<void>;
   setProfile: (p: ApiProfile) => void;
   setSidebarOpen: (open: boolean) => void;
+  setIsAdmin: (isAdmin: boolean) => void;
+  checkAdmin: () => Promise<void>;
 }
 
 export const useStore = create<ProfileState>()(
@@ -57,6 +60,7 @@ export const useStore = create<ProfileState>()(
       loading: true,
       syncing: false,
       sidebarOpen: true,
+      isAdmin: false,
 
       // ── Load profile from backend ───────────────────────────────────────
       loadProfile: async () => {
@@ -120,6 +124,18 @@ export const useStore = create<ProfileState>()(
       },
 
       setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
+      setIsAdmin: (isAdmin: boolean) => set({ isAdmin }),
+      checkAdmin: async () => {
+        try {
+          // We can import apiGetUserStatus here dynamically if needed, but we already have apiGetProfile, apiGetSkillGap, etc.
+          // Wait, apiGetUserStatus is not imported in store.ts. I need to import it.
+          const { apiGetUserStatus } = await import('./api');
+          const status = await apiGetUserStatus();
+          set({ isAdmin: !!(status as any).is_admin });
+        } catch {
+          set({ isAdmin: false });
+        }
+      },
     }),
     {
       name: "acm-store",

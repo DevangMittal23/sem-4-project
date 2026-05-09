@@ -8,7 +8,7 @@ import { getAccessToken } from "@/lib/api";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 function StoreHydrator({ children }: { children: React.ReactNode }) {
-  const { loadProfile, loadIntelligence, loadStats, syncAll } = useStore();
+  const { loadProfile, loadIntelligence, loadStats, syncAll, checkAdmin } = useStore();
 
   useEffect(() => {
     if (!getAccessToken()) return;
@@ -17,6 +17,7 @@ function StoreHydrator({ children }: { children: React.ReactNode }) {
     loadProfile().then(() => {
       loadIntelligence();
       loadStats();
+      checkAdmin();
     });
 
     // Re-sync every 30s to pick up pipeline results from assessment

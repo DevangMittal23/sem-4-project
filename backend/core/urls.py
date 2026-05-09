@@ -26,4 +26,7 @@ urlpatterns = [
     #            /api/ai/career/, /api/ai/roadmap/, /api/ai/tasks/,
     #            /api/ai/tasks/generate/, /api/ai/analysis/, etc.
     path("api/ai/", include("ai_engine.urls")),
+
+    # Custom Admin APIs
+    path("api/admin/", include("admin_dashboard.urls")),
 ]

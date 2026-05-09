@@ -288,7 +288,7 @@ function SignupFormUI({ onSubmit, loading, serverError }: {
 ═══════════════════════════════════════════════════════════════ */
 export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
-  const { setProfile } = useStore();
+  const { setProfile, checkAdmin } = useStore();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -302,9 +302,13 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
       const res = await apiLogin(username, password);
       saveTokens(res.tokens.access, res.tokens.refresh);
       setToast({ message: "Welcome back! Redirecting…", type: "success" });
-      if (res.is_assessment_completed) {
-        try { const p = await apiGetProfile(); setProfile(p); } catch { /* non-fatal */ }
-        nav("/dashboard");
+      if (res.is_assessment_completed || res.is_admin) {
+        try { 
+          const p = await apiGetProfile(); 
+          setProfile(p); 
+          await checkAdmin();
+        } catch { /* non-fatal */ }
+        nav(res.is_admin ? "/admin" : "/dashboard");
       } else {
         nav("/assessment");
       }
@@ -338,10 +342,14 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
       const res = await apiGoogleAuth(accessToken);
       saveTokens(res.tokens.access, res.tokens.refresh);
 
-      if (res.is_assessment_completed) {
-        setToast({ message: "Welcome back! Redirecting to dashboard…", type: "success" });
-        try { const p = await apiGetProfile(); setProfile(p); } catch { /* non-fatal */ }
-        nav("/dashboard");
+      if (res.is_assessment_completed || res.is_admin) {
+        setToast({ message: "Welcome back! Redirecting...", type: "success" });
+        try { 
+          const p = await apiGetProfile(); 
+          setProfile(p); 
+          await checkAdmin();
+        } catch { /* non-fatal */ }
+        nav(res.is_admin ? "/admin" : "/dashboard");
       } else {
         setToast({
           message: res.is_new_user

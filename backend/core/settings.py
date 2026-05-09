@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "assessment",
     "dashboard",
     "ai_engine",
+    "admin_dashboard",
 ]
 
 MIDDLEWARE = [
