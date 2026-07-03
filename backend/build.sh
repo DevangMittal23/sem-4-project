@@ -11,6 +11,6 @@ echo "==> Collecting static files..."
 python manage.py collectstatic --no-input
 
 echo "==> Running database migrations..."
-python manage.py migrate --no-input
+python manage.py migrate --no-input || echo "WARNING: Migrations failed — check DATABASE_URL. The app will still start."
 
 echo "==> Build complete."
